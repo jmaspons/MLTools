@@ -1,12 +1,31 @@
 ## FUNCTIONS: Build and Train Neural Networks ----
+# 2 hidden layers
+build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128){
+  model<- keras_model_sequential() %>%
+    layer_dense(units=hidden_shape, activation="relu", input_shape=input_shape) %>%
+    layer_dense(units=hidden_shape, activation="relu") %>%
+    layer_dense(units=output_shape)
 
+  model %>% compile(
+    loss="mse",
+    optimizer=optimizer_rmsprop(),
+    metrics=list("mean_squared_error", "mean_absolute_error", "mean_absolute_percentage_error")
+  )
+
+  model
+}
+
+## DEPRECATED
 build_model<- function(train_data, train_labels=matrix(1)) {
+  .Deprecated("build_modelDNN", package="NNTools")
+  input_shape<- dim(train_data)[2]
+  output_shape<- dim(train_labels)[2]
   model<- keras_model_sequential() %>%
     layer_dense(units=128, activation="relu",
-                input_shape=dim(train_data)[2]) %>%
+                input_shape=input_shape) %>%
     # layer_dense(units=128, activation="relu") %>%
     layer_dense(units=128, activation="relu") %>%
-    layer_dense(units=dim(train_labels)[2])
+    layer_dense(units=output_shape)
 
   model %>% compile(
     loss="mse",
@@ -59,6 +78,8 @@ process<- function(df, predInput, epochs=500, iterations=10, repVi=5, DALEXexpla
       names(predicts)[1:2]<- c("Longitude", "Latitude", paste("rep", 1:iterations))
     }
   }
+
+  modelNN<- build_modelDNN(input_shape=ncol(df) - 1, output_shape=1) ## TODO: generalize
 
   # pb<- txtProgressBar(max=iterations, style=pbStyle)
   # on.exit(close(pb))
@@ -217,6 +238,7 @@ process<- function(df, predInput, epochs=500, iterations=10, repVi=5, DALEXexpla
 
 ## DEPRECATED ----
 trainPred<- function(df, predInput, epochs=500, repVi=5, filenameNN, batch_size=NULL, verbose=0){
+  .Deprecated("process", package="NNTools")
   perf<- data.frame()
   scaleVals<- list()
 
@@ -336,6 +358,7 @@ trainPred<- function(df, predInput, epochs=500, repVi=5, filenameNN, batch_size=
 
 
 trainPred.map<- function(df, predInput, epochs=500, repVi=5, rasterFile, baseFilenameNN, batch_size=NULL, verbose=0){
+  .Deprecated("process", package="NNTools")
   predInputDF<- predInput[]
 
   res<- trainPred(df=df, predInput=predInputDF, epochs=epochs, repVi=repVi,  baseFilenameNN, batch_size=batch_size, verbose=verbose)
