@@ -116,7 +116,9 @@ process<- function(df, predInput, epochs=500, iterations=10, repVi=5, DALEXexpla
 
     test_data<- scale(test_data, center=col_means_train, scale=col_stddevs_train)
 
-    modelNN<- build_model(train_data, train_labels)
+    ## TODO: check if reset_state is faster and equivalent to build_model
+    # modelNN<- build_model(train_data, train_labels)
+    modelNN<- reset_states(modelNN)
 
     # print_dot_callback<- callback_lambda(
     #   on_epoch_end = function(epoch, logs) {
