@@ -6,7 +6,7 @@ build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128){
     layer_dense(units=hidden_shape, activation="relu") %>%
     layer_dense(units=output_shape)
 
-  model %>% compile(
+  compile(model,
     loss="mse",
     optimizer=optimizer_rmsprop(),
     metrics=list("mean_squared_error", "mean_absolute_error", "mean_absolute_percentage_error")
@@ -125,7 +125,7 @@ process<- function(df, predInput, epochs=500, iterations=10, repVi=5, DALEXexpla
     #   }
     # )
 
-    # history<- modelNN %>% fit(
+    # history<- fit(modelNN,
     #   train_data,
     #   train_labels,
     #   epochs = epochs,
@@ -139,7 +139,7 @@ process<- function(df, predInput, epochs=500, iterations=10, repVi=5, DALEXexpla
 
     if (verbose > 0) message("trainning... ", appendLF=FALSE)
 
-    history<- modelNN %>% fit(
+    history<- fit(modelNN,
       train_data,
       train_labels,
       epochs=epochs,
@@ -161,7 +161,7 @@ process<- function(df, predInput, epochs=500, iterations=10, repVi=5, DALEXexpla
     ## Model performance
     if (verbose > 0) message("perfomance... ", appendLF=FALSE)
 
-    perfi<- data.frame(modelNN %>% evaluate(test_data, test_labels, verbose=verbose, batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size)))
+    perfi<- data.frame(evaluate(modelNN, test_data, test_labels, verbose=verbose, batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size)))
     perfCaret<- caret::postResample(pred=predict(modelNN, test_data), obs=test_labels)
     mean<- mean(train_labels)
 
@@ -172,7 +172,7 @@ process<- function(df, predInput, epochs=500, iterations=10, repVi=5, DALEXexpla
     if (verbose > 0 & repVi > 0) message("vi... ", appendLF=FALSE)
 
     if (repVi > 0 | DALEXexplainer){
-      explainer<- DALEX::explain(model=modelNN, data=train_data, y=train_labels, predict_function=predict, label="MLP_keras")
+      explainer<- DALEX::explain(model=modelNN, data=train_data, y=train_labels, predict_function=predict, label="MLP_keras", verbose=FALSE)
     }
     if (repVi > 0){
       vii<- replicate(n=repVi, ingredients::feature_importance(explainer), simplify=FALSE)
