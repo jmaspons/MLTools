@@ -15,31 +15,12 @@ build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128){
   model
 }
 
-## DEPRECATED
-build_model<- function(train_data, train_labels=matrix(1)) {
-  .Deprecated("build_modelDNN", package="NNTools")
-  input_shape<- dim(train_data)[2]
-  output_shape<- dim(train_labels)[2]
-  model<- keras_model_sequential() %>%
-    layer_dense(units=128, activation="relu",
-                input_shape=input_shape) %>%
-    # layer_dense(units=128, activation="relu") %>%
-    layer_dense(units=128, activation="relu") %>%
-    layer_dense(units=output_shape)
-
-  model %>% compile(
-    loss="mse",
-    optimizer=optimizer_rmsprop(),
-    metrics=list("mean_squared_error", "mean_absolute_error", "mean_absolute_percentage_error")
-  )
-
-  model
-}
 
 #' Title
 #'
 #' @param df a data.frame whith response variable in the first column
 #' @param predInput a Raster or a data.frame with columns 1 and 2 corresponding to longitude and latitude + variables for the model
+#' @param idCols id column names or indexes on df and/or predInput. Deprecated default for compatibility c("x", "y")
 #' @param epochs
 #' @param iterations
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid report variable importance
@@ -53,9 +34,13 @@ build_model<- function(train_data, train_labels=matrix(1)) {
 #'
 #' @return
 #' @export
-#'
+#' @import keras
+#' @importFrom caret postResample
+#' @importFrom DALEX explain
+#' @importFrom ingredients feature_importance
+#' @importFrom stats predict
 #' @examples
-process<- function(df, predInput, epochs=500, iterations=10, repVi=5, DALEXexplainer=TRUE, crossValRatio=0.8,
+process<- function(df, predInput, idCols=character(), epochs=500, iterations=10, repVi=5, DALEXexplainer=TRUE, crossValRatio=0.8,
                    NNmodel=TRUE, baseFilenameNN, batch_size="all", baseFilenameRasterPred, verbose=0){
   perf<- data.frame()
   scaleVals<- list()
@@ -65,17 +50,16 @@ process<- function(df, predInput, epochs=500, iterations=10, repVi=5, DALEXexpla
   if (!missing(predInput)){
     if (inherits(predInput, "Raster")){
       predRaster<- TRUE
-      predInputRaster<- predInput
-      predInput<- predInput[]
 
       predicts<- list()
     }else{
       predRaster<- FALSE
 
-      ## TODO: generalize
-      predicts<- data.frame(matrix(ncol=iterations + 2, nrow=nrow(predInput)))
-      predicts[, 1:2]<- predInput[, c("x", "y")]
-      names(predicts)[1:2]<- c("Longitude", "Latitude", paste("rep", 1:iterations))
+      ## WIP: generalize
+      predicts<- data.frame(matrix(ncol=iterations + length(idCols), nrow=nrow(predInput),
+                                   ), stringsAsFactors=FALSE)
+      predicts[, idCols]<- predInput[, idCols]
+      names(predicts)<- c(idCols, paste("rep", 1:iterations))
     }
   }
 
@@ -86,7 +70,7 @@ process<- function(df, predInput, epochs=500, iterations=10, repVi=5, DALEXexpla
   # pbapply::pboptions(style=3)
   pb<- pbapply::startpb(min=1, max=iterations)
   on.exit(pbapply::closepb(pb))
-  for (i in 1:iterations) {
+  for (i in 1:iterations) { ## TODO: use replicate(n=iterations, expr, simplify=FALSE)
     # setTxtProgressBar(pb, i)
     pbapply::setpb(pb, i)
     if (verbose > 0) message("\t", i, " / ", iterations, "\t", appendLF=FALSE)
@@ -164,7 +148,7 @@ process<- function(df, predInput, epochs=500, iterations=10, repVi=5, DALEXexpla
     if (verbose > 0) message("perfomance... ", appendLF=FALSE)
 
     perfi<- data.frame(evaluate(modelNN, test_data, test_labels, verbose=verbose, batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size)))
-    perfCaret<- caret::postResample(pred=predict(modelNN, test_data), obs=test_labels)
+    perfCaret<- caret::postResample(pred=stats::predict(modelNN, test_data), obs=test_labels)
     mean<- mean(train_labels)
 
     perfi<- data.frame(mean=mean, perfi, as.list(perfCaret))
@@ -174,7 +158,7 @@ process<- function(df, predInput, epochs=500, iterations=10, repVi=5, DALEXexpla
     if (verbose > 0 & repVi > 0) message("vi... ", appendLF=FALSE)
 
     if (repVi > 0 | DALEXexplainer){
-      explainer<- DALEX::explain(model=modelNN, data=train_data, y=train_labels, predict_function=predict, label="MLP_keras", verbose=FALSE)
+      explainer<- DALEX::explain(model=modelNN, data=train_data, y=train_labels, predict_function=stats::predict, label="MLP_keras", verbose=FALSE)
     }
     if (repVi > 0){
       vii<- replicate(n=repVi, ingredients::feature_importance(explainer), simplify=FALSE)
@@ -196,31 +180,49 @@ process<- function(df, predInput, epochs=500, iterations=10, repVi=5, DALEXexpla
     if (!missing(predInput)){
       if (verbose > 0) message("predict... ", appendLF=FALSE)
 
-      selCols<- intersect(colnames(predInput), names(col_means_train))
+      if (predRaster & requireNamespace("raster", quietly=TRUE)){
+        selCols<- intersect(names(predInput), names(col_means_train))
 
-      predInputScaled<- scale(predInput[, selCols],
-                               center=col_means_train[selCols], scale=col_stddevs_train[selCols])
-      predicti<- predict(modelNN, predInputScaled,
+        predInputScaled<- raster::scale(predInput[[selCols]],
+                                center=col_means_train[selCols], scale=col_stddevs_train[selCols])
+
+        if (!missing(baseFilenameRasterPred)){
+          filename<- paste0(baseFilenameRasterPred, "_it", formatC(i, format="d", flag="0", width=nchar(iterations)), ".grd")
+        }else{
+          filename<- ""
+        }
+
+        # ?keras::predict.keras.engine.training.Model
+        # ?raster::`predict,Raster-method`
+
+        predicti<- predict.Raster_keras(object=predInputScaled, model=modelNN, filename=filename,
+                                        batch_size=ifelse(batch_size %in% "all", raster::ncell(predInputScaled), batch_size),
+                                        verbose=verbose)
+
+        # predicti<- raster::predict(object=predInputScaled, model=modelNN,
+        #                    fun=keras:::predict.keras.engine.training.Model,
+        #                    filename=filename,
+        #                    batch_size=ifelse(batch_size %in% "all", raster::ncell(predInputScaled), batch_size),
+        #                    verbose=verbose)
+        predicts[[i]]<- predicti
+
+      } else if (!predRaster) {
+        selCols<- intersect(colnames(predInput), names(col_means_train))
+
+        predInputScaled<- scale(predInput[, selCols],
+                                center=col_means_train[selCols], scale=col_stddevs_train[selCols])
+        predicti<- stats::predict(modelNN, predInputScaled,
                            batch_size=ifelse(batch_size %in% "all", nrow(predInputScaled), batch_size),
                            verbose=verbose)
-
-      if (predRaster){
-        predicts[[i]]<- raster(predicti, template=predInputRaster)
-        if (!missing(baseFilenameRasterPred)){
-          f<- paste0(baseFilenameRasterPred, "_it", formatC(i, format="d", flag="0", width=nchar(iterations)), ".grd")
-          predicts[[i]]<- writeRaster(predicts[[i]], filename=f, progress="text")
-        }else if (!inMemory(predicts[[i]])){
-          warning("The raster with the predictions doesn't fit in memory and the values won't be saved. ",
-                  "Please, provide a baseFilenameRasterPred parameter to save the raster in a non temporal file.")
-        }
-      }else{
-        predicts[, i + 2]<- predicti
+        predicts[, i + length(idCols)]<- predicti
       }
     }
     if (verbose >= 0) message("")
   }
 
+
   res<- list(performance=perf, scale=scaleVals)
+
   if (NNmodel){
     res$NNmodel<- NNmodelL # unserialize_model() to use the saved model
   }
@@ -232,6 +234,13 @@ process<- function(df, predInput, epochs=500, iterations=10, repVi=5, DALEXexpla
   }
   if (!missing(predInput)){
     res$predicts<- predicts
+
+    if (predRaster)
+      if (!all(sapply(predicts, raster::inMemory))){
+        warning("The rasters with the predictions doesn't fit in memory and the values are saved in a temporal file. ",
+              "Please, provide a baseFilenameRasterPred parameter to save the raster in a non temporal file. ",
+              "If you want to save the predictions of the current run use writeRaster on result$predicts before to close the session.")
+      }
   }
 
   return(res)
@@ -239,6 +248,26 @@ process<- function(df, predInput, epochs=500, iterations=10, repVi=5, DALEXexpla
 
 
 ## DEPRECATED ----
+build_model<- function(train_data, train_labels=matrix(1)) {
+  .Deprecated("build_modelDNN", package="NNTools")
+  input_shape<- dim(train_data)[2]
+  output_shape<- dim(train_labels)[2]
+  model<- keras_model_sequential() %>%
+    layer_dense(units=128, activation="relu",
+                input_shape=input_shape) %>%
+    # layer_dense(units=128, activation="relu") %>%
+    layer_dense(units=128, activation="relu") %>%
+    layer_dense(units=output_shape)
+
+  model %>% compile(
+    loss="mse",
+    optimizer=optimizer_rmsprop(),
+    metrics=list("mean_squared_error", "mean_absolute_error", "mean_absolute_percentage_error")
+  )
+
+  model
+}
+
 trainPred<- function(df, predInput, epochs=500, repVi=5, filenameNN, batch_size=NULL, verbose=0){
   .Deprecated("process", package="NNTools")
   perf<- data.frame()
@@ -320,7 +349,7 @@ trainPred<- function(df, predInput, epochs=500, repVi=5, filenameNN, batch_size=
     if (verbose >= 0) message("perfomance... ", appendLF=FALSE)
 
     perfi<- data.frame(modelNN %>% evaluate(train_data, train_labels, verbose=verbose, batch_size=ifelse(batch_size %in% "all", nrow(train_data), batch_size)))
-    perfCaret<- caret::postResample(pred=predict(modelNN, train_data), obs=train_labels)
+    perfCaret<- caret::postResample(pred=stats::predict(modelNN, train_data), obs=train_labels)
     mean<- mean(train_labels)
 
     perfi<- data.frame(mean=mean, perfi, as.list(perfCaret))
