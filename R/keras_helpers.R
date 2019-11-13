@@ -20,17 +20,18 @@ build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128){
 #'
 #' @param df a data.frame whith response variable in the first column
 #' @param predInput a Raster or a data.frame with columns 1 and 2 corresponding to longitude and latitude + variables for the model
-#' @param idCols id column names or indexes on df and/or predInput. Deprecated default for compatibility c("x", "y")
-#' @param epochs
-#' @param iterations
+#' @param idVars id column names or indexes on df and/or predInput. Deprecated default for compatibility c("x", "y")
+#' @param responseVars response variables. Column names or indexes on df
+#' @param epochs parameter for \code\link[keras]{fit}}.
+#' @param iterations number of replicates
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid report variable importance
 #' @param DALEXexplainer return a explainer for the models from \code\link[DALEX]{explain}} function.
 #' @param crossValRatio Proportion of the dataset used to train the model. Default to 0.8
 #' @param NNmodel if TRUE, return the serialized model with the result.
 #' @param baseFilenameNN if no missing, save the NN in hdf5 format on this path with iteration appended.
 #' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
-#' @param rasterFile if no missing, save the predictions in Raster format on this path with iteration appended.
-#' @param verbose
+#' @param baseFilenameRasterPred if no missing, save the predictions in Raster format on this path with iteration appended.
+#' @param verbose If > 0, print state and passed to keras functions
 #'
 #' @return
 #' @export
@@ -40,12 +41,21 @@ build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128){
 #' @importFrom ingredients feature_importance
 #' @importFrom stats predict
 #' @examples
-process<- function(df, predInput, idCols=character(), epochs=500, iterations=10, repVi=5, DALEXexplainer=TRUE, crossValRatio=0.8,
+process<- function(df, predInput, responseVars=1, idVars=character(),
+                   epochs=500, iterations=10, repVi=5, DALEXexplainer=TRUE, crossValRatio=0.8,
                    NNmodel=TRUE, baseFilenameNN, batch_size="all", baseFilenameRasterPred, verbose=0){
   perf<- data.frame()
   scaleVals<- list()
   DALEXexplainerL<- list()
   NNmodelL<- list()
+
+  if (is.character(responseVars)){
+    responseVars<- which(colnames(df) %in% responseVars)
+  }
+  if (is.character(idVars)){
+    idVars<- which(colnames(df) %in% idVars)
+  }
+  predVars<- setdiff(1:ncol(df), c(responseVars, idVars))
 
   if (!missing(predInput)){
     if (inherits(predInput, "Raster")){
@@ -54,37 +64,39 @@ process<- function(df, predInput, idCols=character(), epochs=500, iterations=10,
       predicts<- list()
     }else{
       predRaster<- FALSE
-
-      ## WIP: generalize
-      predicts<- data.frame(matrix(ncol=iterations + length(idCols), nrow=nrow(predInput),
-                                   ), stringsAsFactors=FALSE)
-      predicts[, idCols]<- predInput[, idCols]
-      names(predicts)<- c(idCols, paste("rep", 1:iterations))
+      predicts<- matrix(ncol=length(idVars) + (iterations * length(responseVars)), nrow=nrow(predInput),
+                        dimnames=list(rownames(predInput),
+                          c(colnames(df)[idVars], paste0(rep(colnames(df)[responseVars], times=iterations), rep(paste0("_rep", formatC(1:iterations, format="d", flag="0", width=nchar(iterations))), each=length(responseVars))))))
+      predicts<- data.frame(predicts, stringsAsFactors=FALSE)
+      predicts[, idVars]<- predInput[, idVars]
     }
   }
 
-  modelNN<- build_modelDNN(input_shape=ncol(df) - 1, output_shape=1) ## TODO: generalize
+  modelNN<- build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars))
 
   # pb<- txtProgressBar(max=iterations, style=pbStyle)
   # on.exit(close(pb))
   # pbapply::pboptions(style=3)
   pb<- pbapply::startpb(min=1, max=iterations)
   on.exit(pbapply::closepb(pb))
-  for (i in 1:iterations) { ## TODO: use replicate(n=iterations, expr, simplify=FALSE)
+  for (i in 1:iterations) {
+    ## TODO: use replicate(n=iterations, expr, simplify=FALSE) or
+    # batchtools to fix exponential process time increase
     # setTxtProgressBar(pb, i)
     pbapply::setpb(pb, i)
     if (verbose > 0) message("\t", i, " / ", iterations, "\t", appendLF=FALSE)
     crossValSets<- splitdf(df, ratio=crossValRatio)
 
-    trainY<- as.matrix(crossValSets$trainset[, 1])
-    trainX<- as.matrix(crossValSets$trainset[, -1]) # definir les columnes desitjades
+    trainY<- as.matrix(crossValSets$trainset[, responseVars])
+    trainX<- as.matrix(crossValSets$trainset[, predVars])
     trainset<- list(trainX, trainY)
 
-    testY<- as.matrix(crossValSets$testset[, 1])
-    testX<- as.matrix(crossValSets$testset[, -1]) # definir les columnes desitjades
+    testY<- as.matrix(crossValSets$testset[, responseVars])
+    testX<- as.matrix(crossValSets$testset[, predVars])
     testset<- list(testX,testY)
 
     Tr1Nnn<- list(trainset, testset)
+    ## TODO: translate to R
     c(train_data, train_labels) %<-% Tr1Nnn[[1]]
     c(test_data, test_labels) %<-% Tr1Nnn[[2]]
     names(Tr1Nnn)[[1]]<- c(train_data, train_labels)
@@ -214,7 +226,7 @@ process<- function(df, predInput, idCols=character(), epochs=500, iterations=10,
         predicti<- stats::predict(modelNN, predInputScaled,
                            batch_size=ifelse(batch_size %in% "all", nrow(predInputScaled), batch_size),
                            verbose=verbose)
-        predicts[, i + length(idCols)]<- predicti
+        predicts[, (length(idVars) + i * length(responseVars) - (length(responseVars) - 1)):(length(idVars) + i * length(responseVars))]<- predicti
       }
     }
     if (verbose >= 0) message("")

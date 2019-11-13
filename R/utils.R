@@ -20,14 +20,15 @@ splitdf<- function(df, seed=NULL, ratio=0.8) {
   trainindex<- c(limitindex, trainindex)
   trainset<- df[trainindex, ]
   testset<- df[-trainindex, ]
-  list(trainset=trainset, testset=testset)
+
+  return(list(trainset=trainset, testset=testset))
 }
 
 
 # https://github.com/rspatial/raster/blob/b1c9d91b1b43b17ea757889dc93f97bd70dc1d2e/R/predict.R
-?raster::`predict,Raster-method`
-?predict.keras.engine.training.Model
-
+# ?raster::`predict,Raster-method`
+# ?predict.keras.engine.training.Model
+## TODO: length(responseVars) > 1
 predict.Raster_keras<- function(object, model, filename, fun=predict, ...) {
   out<- raster::raster(object)
   big<- !raster::canProcessInMemory(out, raster::nlayers(object) + 1)
