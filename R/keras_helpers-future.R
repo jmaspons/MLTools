@@ -26,8 +26,6 @@
 process_keras<- function(df, predInput, responseVars=1, idVars=character(),
                    epochs=500, iterations=10, repVi=5, DALEXexplainer=TRUE, crossValRatio=0.8,
                    NNmodel=TRUE, baseFilenameNN, batch_size="all", baseFilenameRasterPred, verbose=0){
-  res<- list()
-
   if (is.character(responseVars)){
     responseVars<- which(colnames(df) %in% responseVars)
   }
@@ -39,96 +37,86 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
   if (missing(predInput)) predInput<- NULL
   if (missing(baseFilenameNN)) baseFilenameNN<- NULL
   if (missing(baseFilenameRasterPred)) baseFilenameRasterPred<- NULL
+  # verbose<- verbose ## for future?
 
   modelNN<- build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars))
 
   ## Check convergence on the max epochs frame
-  early_stop<- callback_early_stopping(monitor="val_loss", patience=30)
+  early_stop<- keras::callback_early_stopping(monitor="val_loss", patience=30)
 
-  # future.apply::future_replicate()
-  for (i in 1:iterations) {
-    ## TODO: use replicate(n=iterations, expr, simplify=FALSE) or
-    # future plan(multisession)
-    # batchtools to fix exponential process time increase
-    # future.apply
-    # reg$cluster.functions<- makeClusterFunctionsInteractive(external=TRUE) ## use Rscript call for each job
-    # setTxtProgressBar(pb, i)
-    # pbapply::setpb(pb, i)
-    res[[i]]<- future::future({
-      resi<- list()
-      crossValSets<- NNTools:::splitdf(df, ratio=crossValRatio)
+  res<- future.apply::future_replicate(iterations, {
+    resi<- list()
+    crossValSets<- NNTools:::splitdf(df, ratio=crossValRatio)
 
-      train_labels<- as.matrix(crossValSets$trainset[, responseVars, drop=FALSE])
-      train_data<- as.matrix(crossValSets$trainset[, predVars, drop=FALSE])
+    train_labels<- as.matrix(crossValSets$trainset[, responseVars, drop=FALSE])
+    train_data<- as.matrix(crossValSets$trainset[, predVars, drop=FALSE])
 
-      test_labels<- as.matrix(crossValSets$testset[, responseVars, drop=FALSE])
-      test_data<- as.matrix(crossValSets$testset[, predVars, drop=FALSE])
+    test_labels<- as.matrix(crossValSets$testset[, responseVars, drop=FALSE])
+    test_data<- as.matrix(crossValSets$testset[, predVars, drop=FALSE])
 
-      train_data<- scale(train_data)
+    train_data<- scale(train_data)
 
-      col_means_train<- attr(train_data, "scaled:center")
-      col_stddevs_train<- attr(train_data, "scaled:scale")
+    col_means_train<- attr(train_data, "scaled:center")
+    col_stddevs_train<- attr(train_data, "scaled:scale")
 
-      resi$scaleVals<- data.frame(mean=col_means_train, sd=col_stddevs_train)
+    resi$scaleVals<- data.frame(mean=col_means_train, sd=col_stddevs_train)
 
-      test_data<- scale(test_data, center=col_means_train, scale=col_stddevs_train)
+    test_data<- scale(test_data, center=col_means_train, scale=col_stddevs_train)
 
-      ## TODO: check if reset_state is faster and equivalent to build_model
-      # modelNN<- build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars))
-      modelNN<- keras::reset_states(modelNN)
+    ## TODO: check if reset_state is faster and equivalent to build_model
+    # modelNN<- build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars))
+    modelNN<- keras::reset_states(modelNN)
 
 
-      resi$model<- NNTools:::train_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels,
-                             test_data=test_data, test_labels=test_labels, epochs=epochs,
-                             batch_size=batch_size, callbacks=early_stop, verbose=verbose)
+    resi$model<- NNTools:::train_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels,
+                           test_data=test_data, test_labels=test_labels, epochs=epochs,
+                           batch_size=batch_size, callbacks=early_stop, verbose=verbose)
 
-      ## Model performance
-      resi$performance<- NNTools:::performance_keras(modelNN=modelNN, test_data=test_data, test_labels=test_labels,
-                               batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size), verbose=verbose)
+    ## Model performance
+    resi$performance<- NNTools:::performance_keras(modelNN=modelNN, test_data=test_data, test_labels=test_labels,
+                             batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size), verbose=verbose)
 
-      ## Variable importance
-      resi$variableImportance<- NNTools:::variableImportance_keras(modelNN=resi$model, train_data=train_data, train_labels=train_labels,
-                                       repVi=repVi, DALEXexplainer=DALEXexplainer)
+    ## Variable importance
+    resi$variableImportance<- NNTools:::variableImportance_keras(modelNN=resi$model, train_data=train_data, train_labels=train_labels,
+                                     repVi=repVi, DALEXexplainer=DALEXexplainer)
 
-      ## Predictions
-      if (!is.null(predInput)){
-        if (inherits(predInput, "Raster")){
-          batch_sizePred<- ifelse(batch_size %in% "all", raster::ncell(predInput), batch_size)
-          if (!is.null(baseFilenameRasterPred)){
-            filename<- paste0(baseFilenameRasterPred, "_it", formatC(i, format="d", flag="0", width=nchar(iterations)), ".grd")
-          }else{
-            filename<- ""
-          }
-        } else {
-          batch_sizePred<- ifelse(batch_size %in% "all", nrow(predInput), batch_size)
+    ## Predictions
+    if (!is.null(predInput)){
+      if (inherits(predInput, "Raster")){
+        batch_sizePred<- ifelse(batch_size %in% "all", raster::ncell(predInput), batch_size)
+        if (!is.null(baseFilenameRasterPred)){
+          filename<- paste0(baseFilenameRasterPred, "_it", formatC(i, format="d", flag="0", width=nchar(iterations)), ".grd")
+        }else{
+          filename<- ""
         }
-
-        resi$predictions<- NNTools:::predict_keras(modelNN=modelNN, predInput=predInput,
-                                 col_means_train=col_means_train, col_stddevs_train=col_stddevs_train,
-                                 batch_size=batch_sizePred, filename=filename)
+      } else {
+        batch_sizePred<- ifelse(batch_size %in% "all", nrow(predInput), batch_size)
       }
 
-      resi
-    })
-  } ## end for loop
+      resi$predictions<- NNTools:::predict_keras(modelNN=modelNN, predInput=predInput,
+                               col_means_train=col_means_train, col_stddevs_train=col_stddevs_train,
+                               batch_size=batch_sizePred, filename=filename)
+    }
+
+    return(resi)
+  }, simplify=FALSE)
 
 
-  resV<- lapply(res, future::value)
 
   if (!is.null(baseFilenameNN)){
-    res<- lapply(seq_along(resV), function(i){
-      save_model_hdf5(resV[[i]]$model, filepath=paste0(baseFilenameNN, "_", formatC(i, format="d", flag="0", width=nchar(iterations)), ".hdf5"),
+    out<- lapply(seq_along(res), function(i){
+      save_model_hdf5(res[[i]]$model, filepath=paste0(baseFilenameNN, "_", formatC(i, format="d", flag="0", width=nchar(iterations)), ".hdf5"),
                       overwrite=TRUE, include_optimizer=TRUE)
     })
   }
 
 
-  out<- list(performance=do.call(rbind, lapply(resV, function(x) x$performance)),
-             scale=lapply(resV, function(x) x$scaleVals))
+  out<- list(performance=do.call(rbind, lapply(res, function(x) x$performance)),
+             scale=lapply(res, function(x) x$scaleVals))
 
 
   if (repVi > 0){
-    vi<- lapply(resV, function(x){
+    vi<- lapply(res, function(x){
             tmp<- x$variableImportance$vi
             tmp[sort(rownames(tmp)),]
           })
@@ -137,7 +125,7 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
   }
 
   if (!is.null(predInput)){
-    out$predictions<- lapply(resV, function(x) x$predictions)
+    out$predictions<- lapply(res, function(x) x$predictions)
 ## TODO: pack rasters
     if (inherits(predInput, "Raster")){
       if (!all(sapply(out$predictions, raster::inMemory))){
@@ -163,13 +151,13 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
 
 
   if (NNmodel){
-    out$model<- lapply(resV, function(x){
+    out$model<- lapply(res, function(x){
       serialize_model(x$model) # unserialize_model() to use the saved model
     })
   }
 
   if (DALEXexplainer){
-    out$DALEXexplainer<- lapply(resV, function(x){
+    out$DALEXexplainer<- lapply(res, function(x){
       x$variableImportance$explainer
     })
   }
