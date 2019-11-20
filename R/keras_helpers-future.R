@@ -85,7 +85,7 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
       if (inherits(predInput, "Raster")){
         batch_sizePred<- ifelse(batch_size %in% "all", raster::ncell(predInput), batch_size)
         if (!is.null(baseFilenameRasterPred)){
-          filename<- paste0(baseFilenameRasterPred, "_it", formatC(i, format="d", flag="0", width=nchar(replicates)), ".grd")
+          filename<- paste0(baseFilenameRasterPred, "_rep", formatC(i, format="d", flag="0", width=nchar(replicates)), ".grd")
         }else{
           filename<- ""
         }
@@ -122,6 +122,8 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
           })
     vi<- do.call(cbind, vi)
     out$vi<- vi[order(rowSums(vi)), ] ## Order by average vi
+    colnames(out$vi)<- paste0(rep(paste0("rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates))), each=repVi),
+                              "_", colnames(out$vi))
   }
 
   if (!is.null(predInput)){
@@ -201,7 +203,7 @@ variableImportance_keras<- function(modelNN, train_data, train_labels, repVi=5, 
   if (repVi > 0){
     vi<- replicate(n=repVi, ingredients::feature_importance(explainer), simplify=FALSE)
     vi<- structure(sapply(vi, function(x) x$dropout_loss),
-                   dimnames=list(as.character(vi[[1]]$variable), paste0("rep", 1:repVi)))
+                   dimnames=list(as.character(vi[[1]]$variable), paste0("perm", formatC(1:repVi, format="d", flag="0", width=nchar(repVi)))))
     out$vi<- vi
   }
 

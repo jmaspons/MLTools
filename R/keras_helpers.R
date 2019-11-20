@@ -175,7 +175,7 @@ process<- function(df, predInput, responseVars=1, idVars=character(),
     if (repVi > 0){
       vii<- replicate(n=repVi, ingredients::feature_importance(explainer), simplify=FALSE)
       vii<- structure(sapply(vii, function(x) x$dropout_loss),
-                      dimnames=list(as.character(vii[[1]]$variable), paste0("it", i, "_rep", 1:repVi)))
+                      dimnames=list(as.character(vii[[1]]$variable), paste0("rep", i, "_perm", 1:repVi)))
 
       if (i == 1){
         vi<- vii
@@ -199,7 +199,7 @@ process<- function(df, predInput, responseVars=1, idVars=character(),
                                 center=col_means_train[selCols], scale=col_stddevs_train[selCols])
 
         if (!missing(baseFilenameRasterPred)){
-          filename<- paste0(baseFilenameRasterPred, "_it", formatC(i, format="d", flag="0", width=nchar(replicates)), ".grd")
+          filename<- paste0(baseFilenameRasterPred, "_rep", formatC(i, format="d", flag="0", width=nchar(replicates)), ".grd")
         }else{
           filename<- ""
         }
