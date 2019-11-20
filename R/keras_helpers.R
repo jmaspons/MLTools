@@ -44,6 +44,7 @@ build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128){
 process<- function(df, predInput, responseVars=1, idVars=character(),
                    epochs=500, iterations=10, repVi=5, DALEXexplainer=TRUE, crossValRatio=0.8,
                    NNmodel=TRUE, baseFilenameNN, batch_size="all", baseFilenameRasterPred, verbose=0){
+  .Deprecated("process_keras", package="NNTools")
   perf<- data.frame()
   scaleVals<- list()
   DALEXexplainerL<- list()
