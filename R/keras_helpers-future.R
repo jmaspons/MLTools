@@ -5,7 +5,7 @@
 #' @param idVars id column names or indexes on df and/or predInput. Deprecated default for compatibility c("x", "y")
 #' @param responseVars response variables. Column names or indexes on df
 #' @param epochs parameter for \code\link[keras]{fit}}.
-#' @param iterations number of replicates
+#' @param replicates number of replicates
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid report variable importance
 #' @param DALEXexplainer return a explainer for the models from \code\link[DALEX]{explain}} function.
 #' @param crossValRatio Proportion of the dataset used to train the model. Default to 0.8
@@ -24,7 +24,7 @@
 #' @importFrom stats predict
 #' @examples
 process_keras<- function(df, predInput, responseVars=1, idVars=character(),
-                   epochs=500, iterations=10, repVi=5, DALEXexplainer=TRUE, crossValRatio=0.8,
+                   epochs=500, replicates=10, repVi=5, DALEXexplainer=TRUE, crossValRatio=0.8,
                    NNmodel=TRUE, baseFilenameNN, batch_size="all", baseFilenameRasterPred, verbose=0){
   if (is.character(responseVars)){
     responseVars<- which(colnames(df) %in% responseVars)
@@ -44,7 +44,7 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
   ## Check convergence on the max epochs frame
   early_stop<- keras::callback_early_stopping(monitor="val_loss", patience=30)
 
-  res<- future.apply::future_replicate(iterations, {
+  res<- future.apply::future_replicate(replicates, {
     resi<- list()
     crossValSets<- NNTools:::splitdf(df, ratio=crossValRatio)
 
@@ -85,7 +85,7 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
       if (inherits(predInput, "Raster")){
         batch_sizePred<- ifelse(batch_size %in% "all", raster::ncell(predInput), batch_size)
         if (!is.null(baseFilenameRasterPred)){
-          filename<- paste0(baseFilenameRasterPred, "_it", formatC(i, format="d", flag="0", width=nchar(iterations)), ".grd")
+          filename<- paste0(baseFilenameRasterPred, "_it", formatC(i, format="d", flag="0", width=nchar(replicates)), ".grd")
         }else{
           filename<- ""
         }
@@ -105,7 +105,7 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
 
   if (!is.null(baseFilenameNN)){
     out<- lapply(seq_along(res), function(i){
-      save_model_hdf5(res[[i]]$model, filepath=paste0(baseFilenameNN, "_", formatC(i, format="d", flag="0", width=nchar(iterations)), ".hdf5"),
+      save_model_hdf5(res[[i]]$model, filepath=paste0(baseFilenameNN, "_", formatC(i, format="d", flag="0", width=nchar(replicates)), ".hdf5"),
                       overwrite=TRUE, include_optimizer=TRUE)
     })
   }
@@ -136,8 +136,8 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
     } else {
       out$predictions<- do.call(cbind, out$predictions)
       rownames(out$predictions)<- rownames(predInput)
-      colnames(out$predictions)<- paste0(rep(colnames(df)[responseVars], times=iterations),
-               rep(paste0("_rep", formatC(1:iterations, format="d", flag="0", width=nchar(iterations))),
+      colnames(out$predictions)<- paste0(rep(colnames(df)[responseVars], times=replicates),
+               rep(paste0("_rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates))),
                    each=length(responseVars)))
 
       idVarNames<- intersect(colnames(df)[idVars], colnames(predInput))

@@ -23,7 +23,7 @@ build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128){
 #' @param idVars id column names or indexes on df and/or predInput. Deprecated default for compatibility c("x", "y")
 #' @param responseVars response variables. Column names or indexes on df
 #' @param epochs parameter for \code\link[keras]{fit}}.
-#' @param iterations number of replicates
+#' @param replicates number of replicates
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid report variable importance
 #' @param DALEXexplainer return a explainer for the models from \code\link[DALEX]{explain}} function.
 #' @param crossValRatio Proportion of the dataset used to train the model. Default to 0.8
@@ -42,7 +42,7 @@ build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128){
 #' @importFrom stats predict
 #' @examples
 process<- function(df, predInput, responseVars=1, idVars=character(),
-                   epochs=500, iterations=10, repVi=5, DALEXexplainer=TRUE, crossValRatio=0.8,
+                   epochs=500, replicates=10, repVi=5, DALEXexplainer=TRUE, crossValRatio=0.8,
                    NNmodel=TRUE, baseFilenameNN, batch_size="all", baseFilenameRasterPred, verbose=0){
   .Deprecated("process_keras", package="NNTools")
   perf<- data.frame()
@@ -65,9 +65,9 @@ process<- function(df, predInput, responseVars=1, idVars=character(),
       predicts<- list()
     }else{
       predRaster<- FALSE
-      predicts<- matrix(ncol=length(idVars) + (iterations * length(responseVars)), nrow=nrow(predInput),
+      predicts<- matrix(ncol=length(idVars) + (replicates * length(responseVars)), nrow=nrow(predInput),
                         dimnames=list(rownames(predInput),
-                          c(colnames(df)[idVars], paste0(rep(colnames(df)[responseVars], times=iterations), rep(paste0("_rep", formatC(1:iterations, format="d", flag="0", width=nchar(iterations))), each=length(responseVars))))))
+                          c(colnames(df)[idVars], paste0(rep(colnames(df)[responseVars], times=replicates), rep(paste0("_rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates))), each=length(responseVars))))))
       predicts<- data.frame(predicts, stringsAsFactors=FALSE)
       predicts[, idVars]<- predInput[, idVars]
     }
@@ -75,17 +75,16 @@ process<- function(df, predInput, responseVars=1, idVars=character(),
 
   modelNN<- build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars))
 
-  # pb<- txtProgressBar(max=iterations, style=pbStyle)
+  # pb<- txtProgressBar(max=replicates, style=pbStyle)
   # on.exit(close(pb))
   # pbapply::pboptions(style=3)
-  pb<- pbapply::startpb(min=1, max=iterations)
+  pb<- pbapply::startpb(min=1, max=replicates)
   on.exit(pbapply::closepb(pb))
-  for (i in 1:iterations) {
-    ## TODO: use replicate(n=iterations, expr, simplify=FALSE) or
+  for (i in 1:replicates) {
     # batchtools to fix exponential process time increase
     # setTxtProgressBar(pb, i)
     pbapply::setpb(pb, i)
-    if (verbose > 0) message("\t", i, " / ", iterations, "\t", appendLF=FALSE)
+    if (verbose > 0) message("\t", i, " / ", replicates, "\t", appendLF=FALSE)
     crossValSets<- splitdf(df, ratio=crossValRatio)
 
     trainY<- as.matrix(crossValSets$trainset[, responseVars])
@@ -150,7 +149,7 @@ process<- function(df, predInput, responseVars=1, idVars=character(),
 
 
     if (!missing(baseFilenameNN)){
-      save_model_hdf5(modelNN, filepath=paste0(baseFilenameNN, "_", formatC(i, format="d", flag="0", width=nchar(iterations)), ".hdf5"),
+      save_model_hdf5(modelNN, filepath=paste0(baseFilenameNN, "_", formatC(i, format="d", flag="0", width=nchar(replicates)), ".hdf5"),
                       overwrite=TRUE, include_optimizer=TRUE)
     }
     if (NNmodel){
@@ -200,7 +199,7 @@ process<- function(df, predInput, responseVars=1, idVars=character(),
                                 center=col_means_train[selCols], scale=col_stddevs_train[selCols])
 
         if (!missing(baseFilenameRasterPred)){
-          filename<- paste0(baseFilenameRasterPred, "_it", formatC(i, format="d", flag="0", width=nchar(iterations)), ".grd")
+          filename<- paste0(baseFilenameRasterPred, "_it", formatC(i, format="d", flag="0", width=nchar(replicates)), ".grd")
         }else{
           filename<- ""
         }
@@ -339,13 +338,13 @@ trainPred<- function(df, predInput, epochs=500, repVi=5, filenameNN, batch_size=
   perf<- data.frame()
   scaleVals<- list()
 
-  # predicts<- data.frame(matrix(ncol=iterations + 2, nrow=nrow(predInput)))
+  # predicts<- data.frame(matrix(ncol=replicates + 2, nrow=nrow(predInput)))
   # predicts[, 1:2]<- predInput[, c("x", "y")]
-  # names(predicts)[1:2]<- c("Longitude", "Latitude", paste("rep", 1:iterations))
+  # names(predicts)[1:2]<- c("Longitude", "Latitude", paste("rep", 1:replicates))
 
 
-  # for (i in 1:iterations) {
-    # if (verbose >= 0) message("\t", i, " / ", iterations, "\t", appendLF=FALSE)
+  # for (i in 1:replicates) {
+    # if (verbose >= 0) message("\t", i, " / ", replicates, "\t", appendLF=FALSE)
     # crossValSets<- splitdf(df, ratio=0.8)
 
     trainY<- as.matrix(df[, 1, drop=FALSE])
@@ -407,7 +406,7 @@ trainPred<- function(df, predInput, epochs=500, repVi=5, filenameNN, batch_size=
 
     if (!missing(filenameNN)){
       save_model_hdf5(modelNN, paste0(filenameNN, ".hdf5"), overwrite=TRUE, include_optimizer=TRUE)
-      # save_model_hdf5(modelNN, paste0(baseFilenameNN, "_", formatC(i, format="d", flag="0", width=nchar(iterations)), ".hdf5"),
+      # save_model_hdf5(modelNN, paste0(baseFilenameNN, "_", formatC(i, format="d", flag="0", width=nchar(replicates)), ".hdf5"),
       #                 overwrite=TRUE, include_optimizer=TRUE)
     }
 
