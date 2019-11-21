@@ -7,7 +7,7 @@
 #' @param epochs parameter for \code\link[keras]{fit}}.
 #' @param replicates number of replicates
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid report variable importance
-#' @param DALEXexplainer return a explainer for the models from \code\link[DALEX]{explain}} function.
+#' @param DALEXexplainer return a explainer for the models from \code\link[DALEX]{explain}} function. Don't work with multisession future plans.
 #' @param crossValRatio Proportion of the dataset used to train the model. Default to 0.8
 #' @param NNmodel if TRUE, return the serialized model with the result.
 #' @param baseFilenameNN if no missing, save the NN in hdf5 format on this path with iteration appended.
@@ -39,10 +39,8 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
   if (missing(baseFilenameRasterPred)) baseFilenameRasterPred<- NULL
   # verbose<- verbose ## for future?
 
-  modelNN<- build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars))
+  # modelNN<- build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars))
 
-  ## Check convergence on the max epochs frame
-  early_stop<- keras::callback_early_stopping(monitor="val_loss", patience=30)
 
   res<- future.apply::future_replicate(replicates, {
     resi<- list()
@@ -64,20 +62,29 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
     test_data<- scale(test_data, center=col_means_train, scale=col_stddevs_train)
 
     ## TODO: check if reset_state is faster and equivalent to build_model
-    # modelNN<- build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars))
-    modelNN<- keras::reset_states(modelNN)
+    modelNN<- build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars))
+    # modelNN<- keras::reset_states(modelNN)
+
+    ## Check convergence on the max epochs frame
+    early_stop<- keras::callback_early_stopping(monitor="val_loss", patience=30)
+    ## Don't import NNmodel nor python objects to code inside future for PSOCK clusters
+    # https://cran.r-project.org/web/packages/future/vignettes/future-4-non-exportable-objects.html
 
 
-    resi$model<- NNTools:::train_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels,
+    modelNN<- NNTools:::train_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels,
                            test_data=test_data, test_labels=test_labels, epochs=epochs,
                            batch_size=batch_size, callbacks=early_stop, verbose=verbose)
+
+    if (NNmodel){
+      resi$model<- keras::serialize_model(modelNN)
+    }
 
     ## Model performance
     resi$performance<- NNTools:::performance_keras(modelNN=modelNN, test_data=test_data, test_labels=test_labels,
                              batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size), verbose=verbose)
 
     ## Variable importance
-    resi$variableImportance<- NNTools:::variableImportance_keras(modelNN=resi$model, train_data=train_data, train_labels=train_labels,
+    resi$variableImportance<- NNTools:::variableImportance_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels,
                                      repVi=repVi, DALEXexplainer=DALEXexplainer)
 
     ## Predictions
@@ -102,15 +109,6 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
   }, simplify=FALSE)
 
 
-
-  if (!is.null(baseFilenameNN)){
-    out<- lapply(seq_along(res), function(i){
-      save_model_hdf5(res[[i]]$model, filepath=paste0(baseFilenameNN, "_", formatC(i, format="d", flag="0", width=nchar(replicates)), ".hdf5"),
-                      overwrite=TRUE, include_optimizer=TRUE)
-    })
-  }
-
-
   out<- list(performance=do.call(rbind, lapply(res, function(x) x$performance)),
              scale=lapply(res, function(x) x$scaleVals))
 
@@ -120,7 +118,9 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
             tmp<- x$variableImportance$vi
             tmp[sort(rownames(tmp)),]
           })
-    vi<- do.call(cbind, vi)
+
+    if (replicates > 1) vi<- do.call(cbind, vi)
+
     out$vi<- vi[order(rowSums(vi)), ] ## Order by average vi
     colnames(out$vi)<- paste0(rep(paste0("rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates))), each=repVi),
                               "_", colnames(out$vi))
@@ -154,8 +154,15 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
 
   if (NNmodel){
     out$model<- lapply(res, function(x){
-      serialize_model(x$model) # unserialize_model() to use the saved model
+      x$model # unserialize_model() to use the saved model
     })
+
+    if (!is.null(baseFilenameNN)){
+      tmp<- lapply(seq_along(out), function(i){
+        save_model_hdf5(keras::unserialize_model(out$model[[i]]), filepath=paste0(baseFilenameNN, "_", formatC(i, format="d", flag="0", width=nchar(replicates)), ".hdf5"),
+                        overwrite=TRUE, include_optimizer=TRUE)
+      })
+    }
   }
 
   if (DALEXexplainer){

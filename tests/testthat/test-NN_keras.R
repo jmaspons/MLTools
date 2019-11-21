@@ -50,3 +50,26 @@ test_that("Predict with raster", {
   #               DALEXexplainer=TRUE, crossValRatio=0.8, NNmodel=FALSE, verbose=0)
 })
 
+
+test_that("Future plans work", {
+  future::plan(future::multisession(workers=3))
+  # options(future.globals.onReference = "error")
+  system.time(resSessions<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
+                                   DALEXexplainer=FALSE, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+# Error in keras::reset_states(modelNN) : attempt to apply non-function
+# Don't import/export python objects to/from code inside future for PSOCK and multisession clusters
+# https://cran.r-project.org/web/packages/future/vignettes/future-4-non-exportable-objects.html
+
+  future::plan(future::transparent)
+  system.time(res<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
+                                   DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+
+  future::plan(future::multicore)
+  system.time(res<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
+                                   DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+
+  future::plan(future::sequential)
+  system.time(res<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
+                                   DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+})
+
