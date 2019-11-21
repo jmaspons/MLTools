@@ -12,7 +12,7 @@
 #' @param NNmodel if TRUE, return the serialized model with the result.
 #' @param baseFilenameNN if no missing, save the NN in hdf5 format on this path with iteration appended.
 #' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
-#' @param baseFilenameRasterPred if no missing, save the predictions in Raster format on this path with iteration appended.
+#' @param filenameRasterPred if no missing, save the predictions in a RasterBrick format to this file.
 #' @param verbose If > 0, print state and passed to keras functions
 #'
 #' @return
@@ -25,7 +25,7 @@
 #' @examples
 process_keras<- function(df, predInput, responseVars=1, idVars=character(),
                    epochs=500, replicates=10, repVi=5, DALEXexplainer=TRUE, crossValRatio=0.8,
-                   NNmodel=TRUE, baseFilenameNN, batch_size="all", baseFilenameRasterPred, verbose=0){
+                   NNmodel=TRUE, baseFilenameNN, batch_size="all", filenameRasterPred, verbose=0){
   if (is.character(responseVars)){
     responseVars<- which(colnames(df) %in% responseVars)
   }
@@ -36,7 +36,7 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
 
   if (missing(predInput)) predInput<- NULL
   if (missing(baseFilenameNN)) baseFilenameNN<- NULL
-  if (missing(baseFilenameRasterPred)) baseFilenameRasterPred<- NULL
+  if (missing(filenameRasterPred)) filenameRasterPred<- NULL
   # verbose<- verbose ## for future?
 
   # modelNN<- build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars))
@@ -62,7 +62,7 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
     test_data<- scale(test_data, center=col_means_train, scale=col_stddevs_train)
 
     ## TODO: check if reset_state is faster and equivalent to build_model
-    modelNN<- build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars))
+    modelNN<- NNTools:::build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars))
     # modelNN<- keras::reset_states(modelNN)
 
     ## Check convergence on the max epochs frame
@@ -91,18 +91,13 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
     if (!is.null(predInput)){
       if (inherits(predInput, "Raster")){
         batch_sizePred<- ifelse(batch_size %in% "all", raster::ncell(predInput), batch_size)
-        if (!is.null(baseFilenameRasterPred)){
-          filename<- paste0(baseFilenameRasterPred, "_rep", formatC(i, format="d", flag="0", width=nchar(replicates)), ".grd")
-        }else{
-          filename<- ""
-        }
       } else {
         batch_sizePred<- ifelse(batch_size %in% "all", nrow(predInput), batch_size)
       }
 
       resi$predictions<- NNTools:::predict_keras(modelNN=modelNN, predInput=predInput,
                                col_means_train=col_means_train, col_stddevs_train=col_stddevs_train,
-                               batch_size=batch_sizePred, filename=filename)
+                               batch_size=batch_sizePred)
     }
 
     return(resi)
@@ -128,13 +123,30 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
 
   if (!is.null(predInput)){
     out$predictions<- lapply(res, function(x) x$predictions)
-## TODO: pack rasters
+
     if (inherits(predInput, "Raster")){
-      if (!all(sapply(out$predictions, raster::inMemory))){
+      lnames<- paste0(rep(colnames(df)[responseVars], times=replicates),
+                      rep(paste0("_rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates))),
+                          each=length(responseVars)))
+
+      out$predictions<- mapply(function(ras, lname){
+              names(ras)<- lname
+              ras
+            }, ras=out$predictions, lname=lnames)
+
+      if (!is.null(filenameRasterPred)){
+        # filename<- paste0(filenameRasterPred, "_rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates)), ".grd")
+        out$predictions<- raster::brick(raster::stack(out$predictions), filename=filenameRasterPred)
+      }else{
+        out$predictions<- raster::brick(out$predictions)
+      }
+
+      if (raster::inMemory(out$predictions)){
         warning("The rasters with the predictions doesn't fit in memory and the values are saved in a temporal file. ",
-                "Please, provide the baseFilenameRasterPred parameter to save the raster in a non temporal file. ",
+                "Please, provide the filenameRasterPred parameter to save the raster in a non temporal file. ",
                 "If you want to save the predictions of the current run use writeRaster on result$predicts before to close the session.")
       }
+
     } else {
       out$predictions<- do.call(cbind, out$predictions)
       rownames(out$predictions)<- rownames(predInput)
