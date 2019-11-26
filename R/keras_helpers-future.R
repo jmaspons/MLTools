@@ -13,6 +13,7 @@
 #' @param baseFilenameNN if no missing, save the NN in hdf5 format on this path with iteration appended.
 #' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
 #' @param filenameRasterPred if no missing, save the predictions in a RasterBrick format to this file.
+#' @param tempdirRaster path to a directory to save temporal raster files.
 #' @param verbose If > 0, print state and passed to keras functions
 #'
 #' @return
@@ -25,7 +26,7 @@
 #' @examples
 process_keras<- function(df, predInput, responseVars=1, idVars=character(),
                    epochs=500, replicates=10, repVi=5, DALEXexplainer=TRUE, crossValRatio=0.8,
-                   NNmodel=TRUE, baseFilenameNN, batch_size="all", filenameRasterPred, verbose=0){
+                   NNmodel=TRUE, baseFilenameNN, batch_size="all", filenameRasterPred, tempdirRaster, verbose=0){
   if (is.character(responseVars)){
     responseVars<- which(colnames(df) %in% responseVars)
   }
@@ -34,10 +35,11 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
   }
   predVars<- setdiff(1:ncol(df), c(responseVars, idVars))
 
+  ## Avoid missing checks in futures
   if (missing(predInput)) predInput<- NULL
   if (missing(baseFilenameNN)) baseFilenameNN<- NULL
   if (missing(filenameRasterPred)) filenameRasterPred<- NULL
-  # verbose<- verbose ## for future?
+  if (missing(tempdirRaster)) tempdirRaster<- NULL
 
   # modelNN<- build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars))
 
@@ -97,16 +99,16 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
 
       resi$predictions<- NNTools:::predict_keras(modelNN=modelNN, predInput=predInput,
                                col_means_train=col_means_train, col_stddevs_train=col_stddevs_train,
-                               batch_size=batch_sizePred)
+                               batch_size=batch_sizePred, tempdirRaster=tempdirRaster)
     }
 
     return(resi)
   }, simplify=FALSE)
 
 
+  # Gather results
   out<- list(performance=do.call(rbind, lapply(res, function(x) x$performance)),
              scale=lapply(res, function(x) x$scaleVals))
-
 
   if (repVi > 0){
     vi<- lapply(res, function(x){
@@ -234,18 +236,29 @@ variableImportance_keras<- function(modelNN, train_data, train_labels, repVi=5, 
 }
 
 
-predict_keras<- function(modelNN, predInput, col_means_train, col_stddevs_train, batch_size, filename=""){
+predict_keras<- function(modelNN, predInput, col_means_train, col_stddevs_train, batch_size, filename="", tempdirRaster=NULL){
   if (inherits(predInput, "Raster") & requireNamespace("raster", quietly=TRUE)){
     selCols<- intersect(names(predInput), names(col_means_train))
 
-    predInputScaled<- raster::scale(predInput[[selCols]],
-                                    center=col_means_train[selCols], scale=col_stddevs_train[selCols])
-
+    if (!is.null(tempdirRaster)){
+      filenameScaled<- tempfile(tmpdir=tempdirRaster, fileext=".grd")
+      if (filename == ""){
+        filename<- tempfile(tmpdir=tempdirRaster, fileext=".grd")
+      }
+    } else {
+      filenameScaled<- raster::rasterTmpFile()
+    }
+    # predInputScaled0<- raster::scale(predInput[[selCols]], center=col_means_train[selCols], scale=col_stddevs_train[selCols])
+    predInputScaled<- raster::calc(predInput[[selCols]], filename=filenameScaled,
+                                   fun=function(x) scale(x, center=col_means_train[selCols], scale=col_stddevs_train[selCols]))
     # ?keras::predict.keras.engine.training.Model
     # ?raster::`predict,Raster-method`
 
     predicts<- predict.Raster_keras(object=predInputScaled, model=modelNN, filename=filename,
                                     batch_size=batch_size) # TODO, verbose=verbose)
+
+    file.remove(filenameScaled, gsub("\\.grd$", ".gri", filenameScaled))
+    rm(predInputScaled)
 
     # predicti<- raster::predict(object=predInputScaled, model=modelNN,
     #                    fun=keras:::predict.keras.engine.training.Model,
