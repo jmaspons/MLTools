@@ -113,24 +113,8 @@ process<- function(df, predInput, responseVars=1, idVars=character(),
     test_data<- scale(test_data, center=col_means_train, scale=col_stddevs_train)
 
     ## TODO: check if reset_state is faster and equivalent to build_model
-    # modelNN<- build_model(train_data, train_labels)
+    # modelNN<- build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars))
     modelNN<- reset_states(modelNN)
-
-    # print_dot_callback<- callback_lambda(
-    #   on_epoch_end = function(epoch, logs) {
-    #     if (epoch %% 80 == 0) message("")
-    #     message(".", appendLF=FALSE)
-    #   }
-    # )
-
-    # history<- fit(modelNN,
-    #   train_data,
-    #   train_labels,
-    #   epochs = epochs,
-    #   validation_split = 0.2,
-    #   verbose = 0,
-    #   callbacks = list(print_dot_callback)
-    # )
 
     ## Check convergence on the max epochs frame
     early_stop<- callback_early_stopping(monitor="val_loss", patience=30)
@@ -248,7 +232,7 @@ process<- function(df, predInput, responseVars=1, idVars=character(),
     res$predicts<- predicts
 
     if (predRaster)
-      if (!all(sapply(predicts, raster::inMemory))){
+      if (!all(sapply(predicts, raster::inMemory)) & missing(baseFilenameRasterPred)){
         warning("The rasters with the predictions doesn't fit in memory and the values are saved in a temporal file. ",
               "Please, provide the baseFilenameRasterPred parameter to save the raster in a non temporal file. ",
               "If you want to save the predictions of the current run use writeRaster on result$predicts before to close the session.")
