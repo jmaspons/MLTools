@@ -21,13 +21,6 @@ crossValRatio<- 0.7
 NNmodel<- FALSE
 verbose<- 0
 
-test_that("process works", {
-  system.time(res<- process(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
-                            baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
-
-  resB<- process(df=df, predInput=predInput, responseVars=1:2, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
-                 DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
-})
 
 test_that("process_keras works", {
   # future::plan(future::multisession(workers=1))
@@ -57,10 +50,6 @@ test_that("Predict with raster", {
   names(predInputR)<- names(df)
   # predInput<- predInputR
 
-
-  resR<- process(df, predInput=predInputR, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
-                 baseFilenameRasterPred=baseFilenameRasterPred, baseFilenameNN=baseFilenameNN,
-                 DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
 
   future::plan(future::sequential)
   future::plan(future::transparent)
