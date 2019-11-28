@@ -24,4 +24,34 @@ splitdf<- function(df, seed=NULL, ratio=0.8) {
   return(list(trainset=trainset, testset=testset))
 }
 
+summarize_pred<- function(pred, ...) UseMethod("summarize_pred", pred)
 
+summarize_pred.default<- function(pred){
+  out<- cbind(mean=rowMeans(pred), sd=apply(pred, 1, stats::sd))
+  out<- cbind(out, se=out[, "sd"] / sqrt(ncol(pred)))
+  out
+}
+
+summarize_pred.Raster<- function(pred, filename){
+  meanMap<- raster::calc(pred, fun=mean)
+  sdMap<- raster::calc(pred, fun=stats::sd)
+
+  sqrtN<- sqrt(raster::nlayers(pred))
+  seMap<- raster::calc(sdMap, fun=function(y) y / sqrtN)
+
+  out<- raster::stack(list(mean=meanMap, sd=sdMap, se=seMap))
+
+  if (!missing(filename)){
+    out<- raster::brick(out, filename=filename)
+
+    ## Remove temporal files
+    tmpFiles<- sapply(list(mean=meanMap, sd=sdMap, se=seMap), function(x){
+      raster::filename(x)
+    })
+
+    tmpFiles<- tmpFiles[tmpFiles != ""]
+    file.remove(tmpFiles, gsub("\\.grd", ".gri", tmpFiles))
+  }
+
+  out
+}

@@ -2,19 +2,22 @@
 #'
 #' @param df a data.frame whith response variable in the first column
 #' @param predInput a Raster or a data.frame with columns 1 and 2 corresponding to longitude and latitude + variables for the model
-#' @param idVars id column names or indexes on df and/or predInput. Deprecated default for compatibility c("x", "y")
 #' @param responseVars response variables. Column names or indexes on df
-#' @param epochs parameter for \code\link[keras]{fit}}.
+#' @param idVars id column names or indexes on df and/or predInput. Deprecated default for compatibility c("x", "y")
 #' @param replicates number of replicates
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid report variable importance
-#' @param DALEXexplainer return a explainer for the models from \code\link[DALEX]{explain}} function. Don't work with multisession future plans.
 #' @param crossValRatio Proportion of the dataset used to train the model. Default to 0.8
-#' @param NNmodel if TRUE, return the serialized model with the result.
-#' @param baseFilenameNN if no missing, save the NN in hdf5 format on this path with iteration appended.
+#' @param hidden_shape number of neurons in the hidden layers of the nerual network model.
+#' @param epochs parameter for \code\link[keras]{fit}}.
 #' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
+#' @param summarizePred if \code{TRUE}, return the mean, sd and se of the predictors. if \code{FALSE}, return the predictions for each replicate.
+#' @param NNmodel if TRUE, return the serialized model with the result.
+#' @param DALEXexplainer if TRUE, return a explainer for the models from \code\link[DALEX]{explain}} function. It doesn't work with multisession future plans.
+#' @param baseFilenameNN if no missing, save the NN in hdf5 format on this path with iteration appended.
 #' @param filenameRasterPred if no missing, save the predictions in a RasterBrick format to this file.
 #' @param tempdirRaster path to a directory to save temporal raster files.
 #' @param verbose If > 0, print state and passed to keras functions
+#' @param ... extra parameters for \code\link[future.apply]{future_replicate}}. Better that user use future::plan?
 #'
 #' @return
 #' @export
@@ -25,8 +28,9 @@
 #' @importFrom stats predict
 #' @examples
 process_keras<- function(df, predInput, responseVars=1, idVars=character(),
-                   epochs=500, replicates=10, repVi=5, DALEXexplainer=TRUE, crossValRatio=0.8,
-                   NNmodel=TRUE, baseFilenameNN, batch_size="all", filenameRasterPred, tempdirRaster, verbose=0){
+                   replicates=10, repVi=5, crossValRatio=0.8, hidden_shape=50, epochs=500, batch_size="all",
+                   summarizePred=TRUE, NNmodel=FALSE, DALEXexplainer=FALSE,
+                   baseFilenameNN, filenameRasterPred, tempdirRaster, verbose=0, ...){
   if (is.character(responseVars)){
     responseVars<- which(colnames(df) %in% responseVars)
   }
@@ -64,7 +68,7 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
     test_data<- scale(test_data, center=col_means_train, scale=col_stddevs_train)
 
     ## TODO: check if reset_state is faster and equivalent to build_model
-    modelNN<- NNTools:::build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars))
+    modelNN<- NNTools:::build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars), hidden_shape=hidden_shape)
     # modelNN<- keras::reset_states(modelNN)
 
     ## Check convergence on the max epochs frame
@@ -103,8 +107,9 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
     }
 
     return(resi)
-  }, simplify=FALSE)
+  }, simplify=FALSE, ...)
 
+  if (verbose > 0) message("Iterations finished. Gathering results...")
 
   # Gather results
   out<- list(performance=do.call(rbind, lapply(res, function(x) x$performance)),
@@ -113,16 +118,17 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
   if (repVi > 0){
     vi<- lapply(res, function(x){
             tmp<- x$variableImportance$vi
-            tmp[sort(rownames(tmp)),]
+            tmp[sort(rownames(tmp)), ]
           })
 
-    if (replicates > 1) vi<- do.call(cbind, vi)
+    vi<- do.call(cbind, vi)
 
-    out$vi<- vi[order(rowSums(vi)), ] ## Order by average vi
+    out$vi<- vi[order(rowSums(vi)), , drop=FALSE] ## Order by average vi
     colnames(out$vi)<- paste0(rep(paste0("rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates))), each=repVi),
                               "_", colnames(out$vi))
   }
 
+  ## Predictions
   if (!is.null(predInput)){
     out$predictions<- lapply(res, function(x) x$predictions)
 
@@ -136,33 +142,65 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
               ras
             }, ras=out$predictions, lname=lnames)
 
+      out$predictions<- raster::stack(out$predictions)
+
       if (!is.null(filenameRasterPred)){
-        # filename<- paste0(filenameRasterPred, "_rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates)), ".grd")
-        out$predictions<- raster::brick(raster::stack(out$predictions), filename=filenameRasterPred)
+        if (summarizePred){
+          out$predictions<- summarize_pred(pred=out$predictions, filename=filenameRasterPred)
+        } else {
+          out$predictions<- raster::brick(out$predictions, filename=filenameRasterPred)
+        }
+      } else {
+        if (summarizePred){
+          out$predictions<- summarize_pred(out$predictions)
+        } else {
+          out$predictions<- raster::brick(out$predictions)
+        }
+
+        if (!raster::inMemory(out$predictions)){
+          warning("The rasters with the predictions doesn't fit in memory and the values are saved in a temporal file. ",
+                  "Please, provide the filenameRasterPred parameter to save the raster in a non temporal file. ",
+                  "If you want to save the predictions of the current run use writeRaster on result$predicts before to close the session.")
+        }
+      }
+
+      tmpFiles<- sapply(res, function(x){
+          raster::filename(x$predictions)
+        })
+      tmpFiles<- tmpFiles[tmpFiles != ""]
+
+      file.remove(tmpFiles, gsub("\\.grd", ".gri", tmpFiles))
+
+    } else { ## non Raster predInput
+
+      out$predictions<- lapply(seq_along(responseVars), function(x){
+                          do.call(cbind, lapply(out$predictions, function(y) y[, x, drop=FALSE]))
+                        })
+      names(out$predictions)<- colnames(df)[responseVars]
+
+      if (summarizePred){
+        out$predictions<- lapply(out$predictions, function(x){
+                            rownames(x)<- rownames(predInput)
+                            summarize_pred(x)
+                          })
       }else{
-        out$predictions<- raster::brick(out$predictions)
+        out$predictions<- lapply(out$predictions, function(x){
+                              rownames(x)<- rownames(predInput)
+                              colnames(x)<- paste0("rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates)))
+                              x
+                           })
       }
-
-      if (raster::inMemory(out$predictions)){
-        warning("The rasters with the predictions doesn't fit in memory and the values are saved in a temporal file. ",
-                "Please, provide the filenameRasterPred parameter to save the raster in a non temporal file. ",
-                "If you want to save the predictions of the current run use writeRaster on result$predicts before to close the session.")
-      }
-
-    } else {
-      out$predictions<- do.call(cbind, out$predictions)
-      rownames(out$predictions)<- rownames(predInput)
-      colnames(out$predictions)<- paste0(rep(colnames(df)[responseVars], times=replicates),
-               rep(paste0("_rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates))),
-                   each=length(responseVars)))
 
       idVarNames<- intersect(colnames(df)[idVars], colnames(predInput))
 
       if (length(idVarNames) > 0){
-        out$predictions<- cbind(predInput[, idVarNames, drop=FALSE], out$predictions)
+        out$predictions<- lapply(out$predictions, function(x){
+                            cbind(predInput[, idVarNames, drop=FALSE], x)
+                          })
       }
 
     }
+
   }
 
 

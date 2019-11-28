@@ -1,6 +1,6 @@
 Package: NNTools
 Title: What the Package Does (one line, title case)
-Version: 0.0.0.9011
+Version: 0.0.0.9012
 Authors@R: person("Joan", "Maspons", email="j.maspons@creaf.uab.cat", role=c("aut", "cre"))
 Description: What the package does (one paragraph).
 Depends: 
