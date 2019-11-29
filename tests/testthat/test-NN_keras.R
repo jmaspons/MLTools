@@ -12,6 +12,7 @@ repVi<- 2
 summarizePred<- TRUE
 hidden_shape<- 10
 batch_size<- "all"
+scaleDataset<- FALSE
 tempdirRaster<- tempdir()
 filenameRasterPred<- paste0(tempdirRaster, "/testMap.grd")
 baseFilenameRasterPred<- paste0(tempdirRaster, "/testMap")
@@ -78,7 +79,6 @@ test_that("Predict with raster", {
   #               DALEXexplainer=TRUE, crossValRatio=0.8, NNmodel=FALSE, verbose=0)
 })
 
-
 test_that("Future plans work", {
   future::plan(future::multisession(workers=3))
   # options(future.globals.onReference = "error")
@@ -103,5 +103,27 @@ test_that("Future plans work", {
   future::plan(future::sequential)
   system.time(res<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
                                   hidden_shape=hidden_shape, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+})
+
+test_that("scaleDataset", {
+  future::plan(future::sequential)
+  system.time(res1<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi,
+                                   batch_size=batch_size, scaleDataset=TRUE, hidden_shape=hidden_shape,
+                                   baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+
+
+  predInputR<- raster::raster(nrows=15, ncols=15)
+  predInputR<- raster::stack(lapply(varScale, function(i){
+    raster::setValues(predInputR, runif(raster::ncell(predInputR)) * i)
+  }))
+
+  names(predInputR)<- names(df)
+  # predInput<- predInputR
+
+  filenameRasterPred<- paste0(tempdir(), "/testMapScaleDataset.grd") # avoid overwrite
+  res2R<- process_keras(df, predInput=predInputR, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
+                        scaleDataset=TRUE,  hidden_shape=hidden_shape,
+                        filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
+                        DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
 })
 

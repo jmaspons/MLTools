@@ -11,6 +11,7 @@
 #' @param epochs parameter for \code\link[keras]{fit}}.
 #' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
 #' @param summarizePred if \code{TRUE}, return the mean, sd and se of the predictors. if \code{FALSE}, return the predictions for each replicate.
+#' @param scaleDataset if \code{TRUE}, scale the whole dataset only once instead of the train set at each replicate. Optimize processing time for predictions with large rasters.
 #' @param NNmodel if TRUE, return the serialized model with the result.
 #' @param DALEXexplainer if TRUE, return a explainer for the models from \code\link[DALEX]{explain}} function. It doesn't work with multisession future plans.
 #' @param baseFilenameNN if no missing, save the NN in hdf5 format on this path with iteration appended.
@@ -29,7 +30,7 @@
 #' @examples
 process_keras<- function(df, predInput, responseVars=1, idVars=character(),
                    replicates=10, repVi=5, crossValRatio=0.8, hidden_shape=50, epochs=500, batch_size="all",
-                   summarizePred=TRUE, NNmodel=FALSE, DALEXexplainer=FALSE,
+                   summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE,
                    baseFilenameNN, filenameRasterPred, tempdirRaster, verbose=0, ...){
   if (is.character(responseVars)){
     responseVars<- which(colnames(df) %in% responseVars)
@@ -45,8 +46,43 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
   if (missing(filenameRasterPred)) filenameRasterPred<- NULL
   if (missing(tempdirRaster)) tempdirRaster<- NULL
 
-  # modelNN<- build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars))
+  ## Select and sort predVars in predInput based on var names matching in df
+  if (!is.null(predInput)){
+    if (inherits(predInput, "Raster") & requireNamespace("raster", quietly=TRUE)){
+      selCols<- intersect(names(predInput), colnames(df)[predVars])
+      predInput<- predInput[[selCols]]
+    }  else if (inherits(predInput, c("data.frame", "matrix"))) {
+      selCols<- intersect(colnames(predInput), colnames(df)[predVars])
+      predInput<- predInput[, selCols]
+    }
+  }
 
+  if (scaleDataset){
+    df.scaled<- scale(df[, predVars, drop=FALSE])
+    df[, predVars]<- df.scaled
+    col_means_train<- attr(df.scaled, "scaled:center")
+    col_stddevs_train<- attr(df.scaled, "scaled:scale")
+
+    if (!is.null(predInput)){
+
+      if (inherits(predInput, "Raster") & requireNamespace("raster", quietly=TRUE)){
+        if (!is.null(tempdirRaster)){
+          filenameScaled<- tempfile(tmpdir=tempdirRaster, fileext=".grd")
+        } else {
+          filenameScaled<- raster::rasterTmpFile()
+        }
+
+        # predInputScaled0<- raster::scale(predInput, center=col_means_train, scale=col_stddevs_train)
+        predInput<- raster::calc(predInput, filename=filenameScaled,
+                                 fun=function(x) scale(x, center=col_means_train, scale=col_stddevs_train))
+
+      }  else if (inherits(predInput, c("data.frame", "matrix"))) {
+        predInput<- scale(predInput[, , drop=FALSE],
+                          center=col_means_train, scale=col_stddevs_train)
+      }
+
+    }
+  }
 
   res<- future.apply::future_replicate(replicates, {
     resi<- list()
@@ -58,14 +94,16 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
     test_labels<- as.matrix(crossValSets$testset[, responseVars, drop=FALSE])
     test_data<- as.matrix(crossValSets$testset[, predVars, drop=FALSE])
 
-    train_data<- scale(train_data)
+    if (!scaleDataset){
+      train_data<- scale(train_data)
 
-    col_means_train<- attr(train_data, "scaled:center")
-    col_stddevs_train<- attr(train_data, "scaled:scale")
+      col_means_train<- attr(train_data, "scaled:center")
+      col_stddevs_train<- attr(train_data, "scaled:scale")
+
+      test_data<- scale(test_data, center=col_means_train, scale=col_stddevs_train)
+    }
 
     resi$scaleVals<- data.frame(mean=col_means_train, sd=col_stddevs_train)
-
-    test_data<- scale(test_data, center=col_means_train, scale=col_stddevs_train)
 
     ## TODO: check if reset_state is faster and equivalent to build_model
     modelNN<- NNTools:::build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars), hidden_shape=hidden_shape)
@@ -101,7 +139,7 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
         batch_sizePred<- ifelse(batch_size %in% "all", nrow(predInput), batch_size)
       }
 
-      resi$predictions<- NNTools:::predict_keras(modelNN=modelNN, predInput=predInput,
+      resi$predictions<- NNTools:::predict_keras(modelNN=modelNN, predInput=predInput, scaleInput=!scaleDataset,
                                col_means_train=col_means_train, col_stddevs_train=col_stddevs_train,
                                batch_size=batch_sizePred, tempdirRaster=tempdirRaster)
     }
@@ -133,6 +171,9 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
     out$predictions<- lapply(res, function(x) x$predictions)
 
     if (inherits(predInput, "Raster")){
+
+      if (scaleDataset) file.remove(filenameScaled, gsub("\\.grd$", ".gri", filenameScaled))
+
       lnames<- paste0(rep(colnames(df)[responseVars], times=replicates),
                       rep(paste0("_rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates))),
                           each=length(responseVars)))
@@ -345,10 +386,22 @@ predict.Raster_keras<- function(object, model, filename, fun=predict, ...) {
 }
 
 
-predict_keras<- function(modelNN, predInput, col_means_train, col_stddevs_train, batch_size, filename="", tempdirRaster=NULL){
+#' Title
+#'
+#' @param modelNN
+#' @param predInput data.frame or raster with colnames or layer names matching the expected input for modelNN
+#' @param scaleInput
+#' @param col_means_train
+#' @param col_stddevs_train
+#' @param batch_size
+#' @param filename
+#' @param tempdirRaster
+#'
+#' @return
+#'
+#' @examples
+predict_keras<- function(modelNN, predInput, scaleInput=FALSE, col_means_train, col_stddevs_train, batch_size, filename="", tempdirRaster=NULL){
   if (inherits(predInput, "Raster") & requireNamespace("raster", quietly=TRUE)){
-    selCols<- intersect(names(predInput), names(col_means_train))
-
     if (!is.null(tempdirRaster)){
       filenameScaled<- tempfile(tmpdir=tempdirRaster, fileext=".grd")
       if (filename == ""){
@@ -357,17 +410,24 @@ predict_keras<- function(modelNN, predInput, col_means_train, col_stddevs_train,
     } else {
       filenameScaled<- raster::rasterTmpFile()
     }
-    # predInputScaled0<- raster::scale(predInput[[selCols]], center=col_means_train[selCols], scale=col_stddevs_train[selCols])
-    predInputScaled<- raster::calc(predInput[[selCols]], filename=filenameScaled,
-                                   fun=function(x) scale(x, center=col_means_train[selCols], scale=col_stddevs_train[selCols]))
-    # ?keras::predict.keras.engine.training.Model
-    # ?raster::`predict,Raster-method`
+
+    if (scaleInput){
+      # predInputScaled<- raster::scale(predInput, center=col_means_train, scale=col_stddevs_train)
+      predInputScaled<- raster::calc(predInput, filename=filenameScaled,
+                                  fun=function(x) scale(x, center=col_means_train, scale=col_stddevs_train))
+      # ?keras::predict.keras.engine.training.Model
+      # ?raster::`predict,Raster-method`
+    } else {
+      predInputScaled<- predInput
+    }
 
     predicts<- predict.Raster_keras(object=predInputScaled, model=modelNN, filename=filename,
                                     batch_size=batch_size) # TODO, verbose=verbose)
 
-    file.remove(filenameScaled, gsub("\\.grd$", ".gri", filenameScaled))
-    rm(predInputScaled)
+    if (scaleInput){
+      file.remove(filenameScaled, gsub("\\.grd$", ".gri", filenameScaled))
+      rm(predInputScaled)
+    }
 
     # predicti<- raster::predict(object=predInputScaled, model=modelNN,
     #                    fun=keras:::predict.keras.engine.training.Model,
@@ -377,10 +437,13 @@ predict_keras<- function(modelNN, predInput, col_means_train, col_stddevs_train,
     # predicts[[i]]<- predicti
 
   } else if (inherits(predInput, c("data.frame", "matrix"))) {
-    selCols<- intersect(colnames(predInput), names(col_means_train))
+    if (scaleInput){
+      predInputScaled<- scale(predInput[, , drop=FALSE],
+                            center=col_means_train, scale=col_stddevs_train)
+    } else {
+      predInputScaled<- predInput
+    }
 
-    predInputScaled<- scale(predInput[, selCols, drop=FALSE],
-                            center=col_means_train[selCols], scale=col_stddevs_train[selCols])
     predicts<- stats::predict(modelNN, predInputScaled,
                               batch_size=batch_size) # TODO, verbose=verbose)
   }
