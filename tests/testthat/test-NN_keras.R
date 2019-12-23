@@ -1,16 +1,16 @@
 context("NN_keras")
 
-varScale<- seq(-100, 100, length.out=10)
+varScale<- seq(-100, 100, length.out=4)
 names(varScale)<- paste0("X", 1:length(varScale))
 df<- data.frame(lapply(varScale, function(i) runif(100) * i))
 predInput<- data.frame(lapply(varScale, function(i) runif(50) * i))
 responseVars<- 1
 idVars<- character()
-epochs<- 10
-replicates<- 5
+epochs<- 5
+replicates<- 2
 repVi<- 2
 summarizePred<- TRUE
-hidden_shape<- 10
+hidden_shape<- 5
 batch_size<- "all"
 scaleDataset<- FALSE
 tempdirRaster<- tempdir()
@@ -48,7 +48,7 @@ test_that("Predict with raster", {
     raster::setValues(predInputR, runif(raster::ncell(predInputR)) * i)
   }))
 
-  names(predInputR)<- names(df)
+  names(predInputR)<- names(varScale)
   # predInput<- predInputR
 
 
@@ -66,15 +66,16 @@ test_that("Predict with raster", {
                         DALEXexplainer=FALSE, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
 
   filenameRasterPred<- paste0(tempdir(), "/testMap3.grd") # avoid overwrite
-  res3BR<- process_keras(df, predInput=predInputR, responseVars=1:2, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size, hidden_shape=hidden_shape,
-                        summarizePred=TRUE, filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
-                        DALEXexplainer=FALSE, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
+  # TODO: predInput raster with > 1 response Var
+  # res3BR<- process_keras(df, predInput=predInputR, responseVars=1:2, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size, hidden_shape=hidden_shape,
+  #                       summarizePred=TRUE, filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
+  #                       DALEXexplainer=FALSE, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
+  #
+  # filenameRasterPred<- paste0(tempdir(), "/testMap4.grd") # avoid overwrite
+  # res3repBR<- process_keras(df, predInput=predInputR, responseVars=1:2, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size, hidden_shape=hidden_shape,
+  #                        summarizePred=FALSE, filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
+  #                        DALEXexplainer=FALSE, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
 
-  filenameRasterPred<- paste0(tempdir(), "/testMap4.grd") # avoid overwrite
-  res3repBR<- process_keras(df, predInput=predInputR, responseVars=1:2, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size, hidden_shape=hidden_shape,
-                         summarizePred=FALSE, filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
-                         DALEXexplainer=FALSE, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
-  # TODO:
   # res<- process_keras(df, predInput=predInputR, responseVars=1:2, epochs=10, replicates=5, repVi=2, batch_size="all",
   #               DALEXexplainer=TRUE, crossValRatio=0.8, NNmodel=FALSE, verbose=0)
 })
