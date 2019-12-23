@@ -1,14 +1,20 @@
 ## TODO: see caret::maxDissim()
-splitdf<- function(df, seed=NULL, ratio=0.7) {
-  if (!is.null(seed)) set.seed(seed)
+splitdf<- function(df, ratio=0.7, trainLimits=TRUE, seed) {
+  if (!missing(seed)) set.seed(seed)
   index<- 1:nrow(df)
-  limitindex<- apply(df[, apply(df, 2, is.numeric)], 2, function(x){
-    # limit<- range(x)
-    mins<- which(x %in% min(x))
-    maxs<- which(x %in% max(x))
-    c(sample(mins, 1), sample(maxs, 1))
-  })
-  limitindex<- unique(as.vector(unlist(limitindex)))
+
+  if (trainLimits){
+    limitindex<- apply(df[, apply(df, 2, is.numeric)], 2, function(x){
+      # limit<- range(x)
+      mins<- which(x %in% min(x))
+      maxs<- which(x %in% max(x))
+      c(sample(mins, 1), sample(maxs, 1))
+    })
+    limitindex<- unique(as.vector(unlist(limitindex)))
+  } else {
+    limitindex<- integer()
+  }
+
   nTrain<- round(length(index) * ratio)
 
   if (length(limitindex) > nTrain){
