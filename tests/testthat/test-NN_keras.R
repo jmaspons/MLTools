@@ -33,11 +33,11 @@ test_that("process_keras works", {
   system.time(res2B<- process_keras(df=df, predInput=predInput, responseVars=1:2, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size, hidden_shape=hidden_shape,
                         baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
-  system.time(res2reps<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi,
+  system.time(res2reps<- process_keras(df=df, predInput=rev(predInput), responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi,
                                        hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE, baseFilenameNN=baseFilenameNN,
                                        DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
-  system.time(res2Breps<- process_keras(df=df, predInput=predInput, responseVars=1:2, epochs=epochs, replicates=replicates, repVi=repVi,
+  system.time(res2Breps<- process_keras(df=df, predInput=rev(predInput), responseVars=1:2, epochs=epochs, replicates=replicates, repVi=repVi,
                                         hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE, baseFilenameNN=baseFilenameNN,
                                         DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 })
@@ -61,7 +61,7 @@ test_that("Predict with raster", {
 
   future::plan(future::multisession(workers=3))
   filenameRasterPred<- paste0(tempdir(), "/testMap2.grd") # avoid overwrite
-  res3R<- process_keras(df, predInput=predInputR, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size, hidden_shape=hidden_shape,
+  res3R<- process_keras(df, predInput=predInputR[[rev(names(predInputR))]], epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size, hidden_shape=hidden_shape,
                         summarizePred=FALSE, filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
                         DALEXexplainer=FALSE, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
 

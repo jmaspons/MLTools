@@ -49,12 +49,24 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
   ## Select and sort predVars in predInput based on var names matching in df
   if (!is.null(predInput)){
     if (inherits(predInput, "Raster") & requireNamespace("raster", quietly=TRUE)){
-      selCols<- intersect(names(predInput), colnames(df)[predVars])
+      selCols<- intersect(colnames(df)[predVars], names(predInput))
       predInput<- predInput[[selCols]]
+      if (!identical(selCols, names(predInput)))
+        stop("Input names for predictions doesn't match input for training. Check variable names.")
     }  else if (inherits(predInput, c("data.frame", "matrix"))) {
-      selCols<- intersect(colnames(predInput), colnames(df)[predVars])
+      selCols<- intersect(colnames(df)[predVars], colnames(predInput))
+      idVarsPred<- intersect(colnames(df)[idVars], colnames(predInput))
+
+      if (length(idVarsPred) > 0){
+        predInputIdVars<- predInput[, idVarsPred, drop=FALSE]
+      }
+
       predInput<- predInput[, selCols]
+
+      if (!identical(selCols, colnames(predInput)))
+        stop("Input names for predictions doesn't match input for training. Check variable names.")
     }
+
   }
 
   if (scaleDataset){
@@ -232,11 +244,9 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
                            })
       }
 
-      idVarNames<- intersect(colnames(df)[idVars], colnames(predInput))
-
-      if (length(idVarNames) > 0){
+      if (length(idVarsPred) > 0){
         out$predictions<- lapply(out$predictions, function(x){
-                            cbind(predInput[, idVarNames, drop=FALSE], x)
+                            cbind(predInputIdVars, x)
                           })
       }
 
