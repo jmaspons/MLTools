@@ -39,11 +39,23 @@ summarize_pred.default<- function(pred){
 }
 
 summarize_pred.Raster<- function(pred, filename){
-  meanMap<- raster::calc(pred, fun=mean)
-  sdMap<- raster::calc(pred, fun=stats::sd)
+  raster::beginCluster()
+
+  meanMap<- raster::clusterR(pred, function(x){
+    raster::calc(x, fun=mean)
+  })
+
+  sdMap<- raster::clusterR(pred, function(x){
+    raster::calc(x, fun=stats::sd)
+  })
 
   sqrtN<- sqrt(raster::nlayers(pred))
-  seMap<- raster::calc(sdMap, fun=function(y) y / sqrtN)
+
+  seMap<- raster::clusterR(sdMap, function(x){
+    raster::calc(x, fun=function(y) y / sqrtN)
+  })
+
+  raster::endCluster()
 
   out<- raster::stack(list(mean=meanMap, sd=sdMap, se=seMap))
 
