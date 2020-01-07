@@ -23,9 +23,6 @@
 #' @return
 #' @export
 #' @import keras
-#' @importFrom caret postResample
-#' @importFrom DALEX explain
-#' @importFrom ingredients feature_importance
 #' @importFrom stats predict
 #' @examples
 process_keras<- function(df, predInput, responseVars=1, idVars=character(),
@@ -299,6 +296,7 @@ train_keras<- function(modelNN, train_data, train_labels, test_data, test_labels
 }
 
 
+# @importFrom caret postResample
 performance_keras<- function(modelNN, test_data, test_labels, batch_size, verbose=0){
   perf<- keras::evaluate(modelNN, test_data, test_labels, verbose=verbose,
                   batch_size=batch_size)
@@ -309,6 +307,8 @@ performance_keras<- function(modelNN, test_data, test_labels, batch_size, verbos
 }
 
 
+# @importFrom DALEX explain
+# @importFrom ingredients feature_importance
 variableImportance_keras<- function(modelNN, train_data, train_labels, repVi=5, DALEXexplainer=FALSE){
   out<- list()
 
