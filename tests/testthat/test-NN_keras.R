@@ -128,3 +128,14 @@ test_that("scaleDataset", {
                         DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
 })
 
+
+test_that("summary", {
+  future::plan(future::multicore)
+  system.time(res<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi,
+                                   batch_size=batch_size, scaleDataset=TRUE, hidden_shape=hidden_shape,
+                                   baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+
+  summary(res)
+  NNTools:::summary.process_NN(res)
+})
+

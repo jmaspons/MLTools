@@ -278,6 +278,8 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
     })
   }
 
+  class(out)<- "process_NN"
+
   return(out)
 }
 
