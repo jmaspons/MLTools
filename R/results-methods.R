@@ -20,33 +20,35 @@ summary.process_NN<- function(object, ...){
 
 
   ## variable importance
-  out$vi<- list()
-  vi.summary<- apply(object$vi, 1, function(x){
-    x<- summary(coda::mcmc(x))
-    data.frame(t(c(x$statistics[c("Mean", "SD", "Naive SE")], x$quantiles)), check.names=FALSE)
-  })
+  if (!is.null(object$vi)){
+    out$vi<- list()
+    vi.summary<- apply(object$vi, 1, function(x){
+      x<- summary(coda::mcmc(x))
+      data.frame(t(c(x$statistics[c("Mean", "SD", "Naive SE")], x$quantiles)), check.names=FALSE)
+    })
 
-  out$vi$vi.summary<- do.call(rbind, vi.summary)
+    out$vi$vi.summary<- do.call(rbind, vi.summary)
 
-  viRatio<- as.matrix(object$vi)["_full_model_",] / as.matrix(object$vi)[which(rownames(object$vi) != "_full_model_"),]
-  viRatio<- as.data.frame(t(viRatio))
-  viRatio<- split(viRatio, sapply(strsplit(rownames(viRatio), "_"), function(y) y[1]))
-  viRatio<- coda::mcmc.list(lapply(viRatio, coda::mcmc))
-  viRatio.summary<- summary(viRatio)
-  viRatio.summary<- data.frame((cbind(viRatio.summary$statistics[, c("Mean", "SD", "Naive SE")], viRatio.summary$quantiles)), check.names=FALSE)
-  viRatio.summary<- viRatio.summary[order(viRatio.summary[, "Mean"], decreasing=FALSE), ]
+    viRatio<- as.matrix(object$vi)["_full_model_",] / as.matrix(object$vi)[which(rownames(object$vi) != "_full_model_"),]
+    viRatio<- as.data.frame(t(viRatio))
+    viRatio<- split(viRatio, sapply(strsplit(rownames(viRatio), "_"), function(y) y[1]))
+    viRatio<- coda::mcmc.list(lapply(viRatio, coda::mcmc))
+    viRatio.summary<- summary(viRatio)
+    viRatio.summary<- data.frame((cbind(viRatio.summary$statistics[, c("Mean", "SD", "Naive SE")], viRatio.summary$quantiles)), check.names=FALSE)
+    viRatio.summary<- viRatio.summary[order(viRatio.summary[, "Mean"], decreasing=FALSE), ]
 
-  out$vi$viRatio.summary<- viRatio.summary
+    out$vi$viRatio.summary<- viRatio.summary
 
-  viDiff<- as.matrix(object$vi)["_full_model_",] - as.matrix(object$vi)[which(rownames(object$vi) != "_full_model_"),]
-  viDiff<- as.data.frame(t(viDiff))
-  viDiff<- split(viDiff, sapply(strsplit(rownames(viDiff), "_"), function(y) y[1]))
-  viDiff<- coda::mcmc.list(lapply(viDiff, coda::mcmc))
-  viDiff.summary<- summary(viDiff)
-  viDiff.summary<- data.frame((cbind(viDiff.summary$statistics[, c("Mean", "SD", "Naive SE")], viDiff.summary$quantiles)), check.names=FALSE)
-  viDiff.summary<- viDiff.summary[order(viDiff.summary[, "Mean"], decreasing=FALSE), ]
+    viDiff<- as.matrix(object$vi)["_full_model_",] - as.matrix(object$vi)[which(rownames(object$vi) != "_full_model_"),]
+    viDiff<- as.data.frame(t(viDiff))
+    viDiff<- split(viDiff, sapply(strsplit(rownames(viDiff), "_"), function(y) y[1]))
+    viDiff<- coda::mcmc.list(lapply(viDiff, coda::mcmc))
+    viDiff.summary<- summary(viDiff)
+    viDiff.summary<- data.frame((cbind(viDiff.summary$statistics[, c("Mean", "SD", "Naive SE")], viDiff.summary$quantiles)), check.names=FALSE)
+    viDiff.summary<- viDiff.summary[order(viDiff.summary[, "Mean"], decreasing=FALSE), ]
 
-  out$vi$viDiff.summary<- viDiff.summary
+    out$vi$viDiff.summary<- viDiff.summary
+  }
 
   ## Predictions
   ## TODO: prediction a summarized.prediction in different list items??
