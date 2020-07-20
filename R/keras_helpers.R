@@ -118,15 +118,14 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
 
     resi$scaleVals<- data.frame(mean=col_means_train, sd=col_stddevs_train)
 
-    ## TODO: check if reset_state is faster and equivalent to build_model
+    ## TODO: check if reset_state is faster and equivalent to build_model. Not possible to reuse model among replicates
+    ## WARNING: Don't import/export NNmodel nor python objects to code inside future for PSOCK clusters, callR.
+    # https://cran.r-project.org/web/packages/future/vignettes/future-4-non-exportable-objects.html
     modelNN<- NNTools:::build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars), hidden_shape=hidden_shape)
     # modelNN<- keras::reset_states(modelNN)
 
     ## Check convergence on the max epochs frame
     early_stop<- keras::callback_early_stopping(monitor="val_loss", patience=30)
-    ## Don't import NNmodel nor python objects to code inside future for PSOCK clusters
-    # https://cran.r-project.org/web/packages/future/vignettes/future-4-non-exportable-objects.html
-
 
     modelNN<- NNTools:::train_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels,
                            test_data=test_data, test_labels=test_labels, epochs=epochs,
@@ -346,6 +345,7 @@ variableImportance_keras<- function(explainer, repVi=5){
 
   return(out)
 }
+
 
 ## FUNCTIONS: Build and Train Neural Networks ----
 # 2 hidden layers
