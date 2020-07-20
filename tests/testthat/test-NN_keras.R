@@ -8,7 +8,7 @@ responseVars<- 1
 idVars<- character()
 epochs<- 5
 replicates<- 2
-repVi<- 2
+repVi<- 3
 summarizePred<- TRUE
 hidden_shape<- 5
 batch_size<- "all"
@@ -24,14 +24,34 @@ verbose<- 0
 
 
 test_that("process_keras works", {
+  result<- list()
   # future::plan(future::multisession(workers=1))
   future::plan(future::transparent)
   # future::plan(future::sequential)
-  system.time(res2<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size, hidden_shape=hidden_shape,
-                                   baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+  system.time(result$resp1summarizedPred<- process_keras(df=df, predInput=predInput, responseVars=responseVars,
+                                                         epochs=epochs, replicates=replicates, repVi=repVi,
+                                                         batch_size=batch_size, hidden_shape=hidden_shape,
+                                                         baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer,
+                                                         crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
-  system.time(res2B<- process_keras(df=df, predInput=predInput, responseVars=1:2, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size, hidden_shape=hidden_shape,
-                        baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+  system.time(result$resp2summarizedPred<- process_keras(df=df, predInput=predInput, responseVars=1:2,
+                                                         epochs=epochs, replicates=replicates, repVi=repVi,
+                                                         batch_size=batch_size, hidden_shape=hidden_shape,
+                                                         baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer,
+                                                         crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+
+  system.time(result$resp1<- process_keras(df=df, predInput=rev(predInput), responseVars=responseVars,
+                                               epochs=epochs, replicates=replicates, repVi=repVi,
+                                               hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE,
+                                               baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer,
+                                               crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+
+  system.time(result$resp2<- process_keras(df=df, predInput=rev(predInput), responseVars=1:2,
+                                           epochs=epochs, replicates=replicates, repVi=repVi,
+                                           hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE,
+                                           baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer,
+                                           crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+
 
   system.time(res2reps<- process_keras(df=df, predInput=rev(predInput), responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi,
                                        hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE, baseFilenameNN=baseFilenameNN,
@@ -40,6 +60,14 @@ test_that("process_keras works", {
   system.time(res2Breps<- process_keras(df=df, predInput=rev(predInput), responseVars=1:2, epochs=epochs, replicates=replicates, repVi=repVi,
                                         hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE, baseFilenameNN=baseFilenameNN,
                                         DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+
+  expectedViColnames<- paste0(rep(paste0("rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates))), each=repVi + 1), "_",
+                              rep(paste0("perm", formatC(0:repVi, format="d", flag="0", width=nchar(repVi))), times=replicates))
+  tmp<- lapply(result, function(x){
+    expect_type(x$vi, type="double")
+    expect_equal(colnames(x$vi), expected=expectedViColnames)
+  })
+
 })
 
 test_that("Predict with raster", {

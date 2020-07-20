@@ -140,9 +140,19 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
     resi$performance<- NNTools:::performance_keras(modelNN=modelNN, test_data=test_data, test_labels=test_labels,
                              batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size), verbose=verbose)
 
-    ## Variable importance
-    resi$variableImportance<- NNTools:::variableImportance_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels,
-                                     repVi=repVi, DALEXexplainer=DALEXexplainer)
+    ## Explain model
+    if (repVi > 0 | DALEXexplainer){
+      explainer<- DALEX::explain(model=modelNN, data=train_data, y=train_labels, predict_function=stats::predict, label="MLP_keras", verbose=FALSE)
+
+      ## Variable importance
+      if (repVi > 0){
+        resi$variableImportance<- NNTools:::variableImportance_keras(explainer=explainer, repVi=repVi)
+      }
+
+      if (DALEXexplainer){
+        resi$explainer<- explainer
+      }
+    }
 
     ## Predictions
     if (!is.null(predInput)){
@@ -177,14 +187,14 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
 
   if (repVi > 0){
     vi<- lapply(res, function(x){
-            tmp<- x$variableImportance$vi
+            tmp<- x$variableImportance
             tmp[sort(rownames(tmp)), ]
           })
-
+    nPerm<- ncol(vi[[1]])
     vi<- do.call(cbind, vi)
 
     out$vi<- vi[order(rowSums(vi)), , drop=FALSE] ## Order by average vi
-    colnames(out$vi)<- paste0(rep(paste0("rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates))), each=repVi),
+    colnames(out$vi)<- paste0(rep(paste0("rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates))), each=nPerm),
                               "_", colnames(out$vi))
   }
 
@@ -280,7 +290,7 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
 
   if (DALEXexplainer){
     out$DALEXexplainer<- lapply(res, function(x){
-      x$variableImportance$explainer
+      x$explainer
     })
   }
 
@@ -318,22 +328,20 @@ performance_keras<- function(modelNN, test_data, test_labels, batch_size, verbos
 
 # @importFrom DALEX explain
 # @importFrom ingredients feature_importance
-variableImportance_keras<- function(modelNN, train_data, train_labels, repVi=5, DALEXexplainer=FALSE){
-  out<- list()
-
-  if (repVi > 0 | DALEXexplainer){
-    explainer<- DALEX::explain(model=modelNN, data=train_data, y=train_labels, predict_function=stats::predict, label="MLP_keras", verbose=FALSE)
-  }
-
+variableImportance_keras<- function(explainer, repVi=5){
   if (repVi > 0){
-    vi<- replicate(n=repVi, ingredients::feature_importance(explainer), simplify=FALSE)
-    vi<- structure(sapply(vi, function(x) x$dropout_loss),
-                   dimnames=list(as.character(vi[[1]]$variable), paste0("perm", formatC(1:repVi, format="d", flag="0", width=nchar(repVi)))))
-    out$vi<- vi
+    vi<- ingredients::feature_importance(explainer, B=repVi)
+    vi<- reshape(as.data.frame(vi)[, c("variable", "dropout_loss", "permutation")], timevar="permutation", idvar="variable", direction="wide")
+    vi<- structure(as.matrix(vi[, -1]),
+                   dimnames=list(as.character(vi$variable),
+                     paste0("perm", formatC(0:(ncol(vi) -2), format="d", flag="0", width=nchar(repVi)))))
+  } else {
+    vi<- NA
   }
 
-  if (DALEXexplainer){
-    out$explainer<- explainer
+  return(vi)
+}
+
   }
 
   return(out)
