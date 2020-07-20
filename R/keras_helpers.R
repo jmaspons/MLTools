@@ -162,9 +162,18 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
 
   if (verbose > 0) message("Iterations finished. Gathering results...")
 
-  # Gather results
-  out<- list(performance=do.call(rbind, lapply(res, function(x) x$performance)),
-             scale=lapply(res, function(x) x$scaleVals))
+
+  ## Gather results
+  names(res)<- paste0("rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates)))
+
+  out<- list(performance=do.call(rbind, lapply(res, function(x) x$performance)))
+
+  if (scaleDataset){
+    out<- c(out, list(scale=list(dataset=data.frame(mean=col_means_train, sd=col_stddevs_train))))
+  } else {
+    out<- c(out, list(scale=lapply(res, function(x) x$scaleVals)))
+  }
+
 
   if (repVi > 0){
     vi<- lapply(res, function(x){
