@@ -89,8 +89,9 @@ test_that("process_keras works", {
     expect_type(x$predictions, type="list")
     expect_type(x$predictions[[1]], type="double")
   })
-  tmp<- expect_equal(colnames(result$resp1summarizedPred$predictions[[1]]), expected=c("mean", "sd", "se"))
-  tmp<- expect_equal(unlist(unique(lapply(result$resp2summarizedPred$predictions, colnames))), expected=c("mean", "sd", "se"))
+  expectedColnames<- c("Mean", "SD", "Naive SE", "2.5%", "25%", "50%", "75%", "97.5%")
+  tmp<- expect_equal(colnames(result$resp1summarizedPred$predictions[[1]]), expected=expectedColnames)
+  tmp<- expect_equal(unlist(unique(lapply(result$resp2summarizedPred$predictions, colnames))), expected=expectedColnames)
   tmp<- expect_equal(colnames(result$resp1$predictions[[1]]), expected=paste0("rep", 1:replicates))
   tmp<- expect_equal(unlist(unique(lapply(result$resp2$predictions, colnames))), expected=paste0("rep", 1:replicates))
 

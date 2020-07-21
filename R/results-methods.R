@@ -62,23 +62,28 @@ summary.process_NN<- function(object, ...){
   }
 
   ## Predictions
-  ## TODO: prediction a summarized.prediction in different list items??
-  if (FALSE & !is.null(object$predictions)){
+  ## TODO: summarized.prediction in different raster brick for each response var
+  if (!is.null(object$predictions)){
     if (inherits(object$predictions, "Raster") & requireNamespace("raster", quietly=TRUE)){
       if (all(names(object$predictions) == c("mean", "sd", "se"))){
-        out$predictions<- object$predictions
+        prediction.summary<- object$predictions
       } else {
-        out$predictions<- summarize_pred.Raster(object$predictions)
+        prediction.summary<- summarize_pred.Raster(object$predictions)
       }
     } else {
       prediction.summary<- lapply(object$predictions, function(x){
-          pred.summary<- summary(coda::mcmc(x))
-          data.frame((cbind(pred.summary$statistics[, c("Mean", "SD", "Naive SE")], pred.summary$quantiles)), check.names=FALSE)
-        })
+          if (all(names(x)[1:3] == c("Mean", "SD", "Naive SE"))){
+            return(object$predictions)
+          } else {
+            return(summarize_pred(object$predictions))
+          }
+      })
     }
 
-    out$prediction.summary<- prediction.summary
+    out$prediction<- prediction.summary
   }
+
+  class(out)<- "summary.process_NN"
 
   return(out)
 }

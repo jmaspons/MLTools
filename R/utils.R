@@ -33,9 +33,10 @@ splitdf<- function(df, ratio=0.7, trainLimits=TRUE, seed) {
 summarize_pred<- function(pred, ...) UseMethod("summarize_pred", pred)
 
 summarize_pred.default<- function(pred){
-  out<- cbind(mean=rowMeans(pred), sd=apply(pred, 1, stats::sd))
-  out<- cbind(out, se=out[, "sd"] / sqrt(ncol(pred)))
-  out
+  t(apply(pred, 1, function(x){
+        pred.summary<- summary(coda::mcmc(x))
+        c(pred.summary$statistics[c("Mean", "SD", "Naive SE")], pred.summary$quantiles)
+      }))
 }
 
 summarize_pred.Raster<- function(pred, filename){
