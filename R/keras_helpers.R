@@ -14,6 +14,7 @@
 #' @param scaleDataset if \code{TRUE}, scale the whole dataset only once instead of the train set at each replicate. Optimize processing time for predictions with large rasters.
 #' @param NNmodel if TRUE, return the serialized model with the result.
 #' @param DALEXexplainer if TRUE, return a explainer for the models from \code\link[DALEX]{explain}} function. It doesn't work with multisession future plans.
+#' @param variableResponse if TRUE, return aggregated_profiles_explainer object from \code\link[ingredients]{partial_dependency}} and the coefficients of the adjusted lineal model.
 #' @param baseFilenameNN if no missing, save the NN in hdf5 format on this path with iteration appended.
 #' @param filenameRasterPred if no missing, save the predictions in a RasterBrick format to this file.
 #' @param tempdirRaster path to a directory to save temporal raster files.
@@ -27,7 +28,7 @@
 #' @examples
 process_keras<- function(df, predInput, responseVars=1, idVars=character(),
                    replicates=10, repVi=5, crossValRatio=0.8, hidden_shape=50, epochs=500, batch_size="all",
-                   summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE,
+                   summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE, variableResponse=TRUE,
                    baseFilenameNN, filenameRasterPred, tempdirRaster, verbose=0, ...){
   if (is.character(responseVars)){
     responseVars<- which(colnames(df) %in% responseVars)
@@ -140,12 +141,16 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
                              batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size), verbose=verbose)
 
     ## Explain model
-    if (repVi > 0 | DALEXexplainer){
+    if (repVi > 0 | variableResponse | DALEXexplainer){
       explainer<- DALEX::explain(model=modelNN, data=train_data, y=train_labels, predict_function=stats::predict, label="MLP_keras", verbose=FALSE)
 
       ## Variable importance
       if (repVi > 0){
         resi$variableImportance<- NNTools:::variableImportance_keras(explainer=explainer, repVi=repVi)
+      }
+      ## Variable response
+      if (variableResponse){
+        resi$variableResponse<- variableResponse_keras(explainer)
       }
 
       if (DALEXexplainer){
@@ -195,6 +200,38 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
     out$vi<- vi[order(rowSums(vi)), , drop=FALSE] ## Order by average vi
     colnames(out$vi)<- paste0(rep(paste0("rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates))), each=nPerm),
                               "_", colnames(out$vi))
+  }
+
+  if (variableResponse){
+    out$variableResponse<- lapply(res, function(x){
+      x$variableResponse$variableResponse
+    })
+
+    variableCoef<- lapply(res, function(x){
+      x$variableResponse$var_coef
+    })
+
+    out$variableCoef<- lapply(rownames(variableCoef[[1]]), function(x){
+      varCoef<- lapply(variableCoef, function(y){
+        na.omit(y[x, ])
+      })
+
+      degrees<- sapply(varCoef, function(y) y["degree"])
+      maxDegree<- max(degrees)
+
+      if (length(unique(degrees)) > 1){
+        # Add NA if varCoef elements have degree < maxDegree (different length)
+        sel<- degrees < maxDegree
+        varCoef[sel]<- lapply(varCoef[sel], function(x){
+                  c(x[1:(1 + x["degree"])], rep(NA_real_, maxDegree - x["degree"]), x[c("adj.r.squared", "r.squared", "degree")])
+                })
+      }
+
+      structure(do.call(rbind, varCoef),
+                dimnames=list(names(varCoef), ## TODO: check translation response var from ingredients::partial_dependency()$`_label_`
+                              c("intercept", paste0("b", 1:(maxDegree)), "adj.r.squared", "r.squared", "degree")))
+    })
+    names(out$variableCoef)<- rownames(variableCoef[[1]])
   }
 
   ## Predictions
@@ -341,9 +378,44 @@ variableImportance_keras<- function(explainer, repVi=5){
   return(vi)
 }
 
+
+variableResponse_keras<- function(explainer, variables=NULL, maxPoly=5){
+  if (is.null(variables)){
+    variables<- colnames(explainer$data)
   }
 
-  return(out)
+  varResp<- ingredients::partial_dependency(x=explainer, variables=variables, variable_type="numerical")
+
+  ## TODO: check that thesaurus linking response variable names from ingredients::partial_dependency & from original data is correct
+  thesaurusResp<- data.frame(respOri=colnames(explainer$y), respIngredients=unique(varResp$`_label_`), stringsAsFactors=FALSE)
+  var_coefsL<- list()
+
+  var_coefsL<- by(varResp, paste(varResp$`_label_`, varResp$`_vname_`), function(x){
+                  for (deg in 1:maxPoly){
+                    mvar<- lm(`_yhat_` ~ poly(`_x_`, deg, raw=TRUE), data=x)
+                    smvar<- summary(mvar)
+
+                    if (smvar$adj.r.squared > 0.9) {
+                      break
+                    }
+                  }
+
+                  # Translate response name to the original
+                  form<- paste(merge(x[1, "_label_"], thesaurusResp, by.x="x", by.y="respIngredients")$respOri, "~", x[1, "_vname_"])
+                  list(formula=form, coefficients=coef(mvar), degree=deg,
+                       fit=c(adj.r.squared=smvar$adj.r.squared, r.squared=smvar$r.squared))
+  }, simplify=FALSE)
+
+  # Build a matrix with NAs in missing colums
+  maxNcoef<- max(sapply(var_coefsL, function(x) length(x$coefficients)))
+  var_coefs<- structure(t(sapply(var_coefsL, function(x){
+                    c(x$coefficients, rep(NA_real_, maxNcoef - length(x$coefficients)),
+                      x$fit, x$degree)
+                })), dimnames=list(sapply(var_coefsL, function(x) x$formula),
+                                 c("intercept", paste0("b", 1:(maxNcoef - 1)), "adj.r.squared", "r.squared", "degree"))
+              )
+
+  return(list(var_coefs=var_coefs, variableResponse=varResp))
 }
 
 

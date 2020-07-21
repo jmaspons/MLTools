@@ -17,6 +17,7 @@ tempdirRaster<- tempdir()
 filenameRasterPred<- paste0(tempdirRaster, "/testMap.grd")
 baseFilenameRasterPred<- paste0(tempdirRaster, "/testMap")
 baseFilenameNN<- paste0(tempdir(), "/testNN")
+variableResponse<- TRUE
 DALEXexplainer<- TRUE
 crossValRatio<- 0.7
 NNmodel<- FALSE
@@ -69,6 +70,19 @@ test_that("process_keras works", {
   tmp<- lapply(result, function(x){
     expect_type(x$vi, type="double")
     expect_equal(colnames(x$vi), expected=expectedViColnames)
+  })
+
+  tmp<- lapply(result, function(x){
+    lapply(x$variableResponse, expect_s3_class, class="partial_dependence_explainer")
+    lapply(x$variableResponse, expect_s3_class, class="aggregated_profiles_explainer")
+  })
+
+  tmp<- lapply(result, function(x){
+    expect_type(x$variableCoef, type="list")
+    lapply(x$variableCoef, function(y){
+      expectedColnames<- c("intercept", paste0("b", 1:(ncol(y) - 4)), "adj.r.squared", "r.squared", "degree")
+      expect_equal(colnames(y), expected=expectedColnames)
+    })
   })
 
   tmp<- lapply(result, function(x){
