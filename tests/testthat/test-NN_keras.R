@@ -104,18 +104,22 @@ test_that("process_keras works", {
 
 
 test_that("Predict with raster", {
-  predInputR<- raster::raster(nrows=15, ncols=15)
+  predInputR<- raster::raster(nrows=4, ncols=6)
   predInputR<- raster::stack(lapply(varScale, function(i){
     raster::setValues(predInputR, runif(raster::ncell(predInputR)) * i)
   }))
 
+  # Put some NAs to detect rotations
+  NAs<- expand.grid(col=1:ncol(predInputR), row=1:nrow(predInputR))
+  NAs<- NAs[NAs$row > NAs$col, ]
+  predInputR[NAs$row, NAs$col]<- NA
+
   names(predInputR)<- names(varScale)
+  resultR<- list()
   # predInput<- predInputR
 
-  resultR<- list()
 
-  future::plan(future::sequential)
-  future::plan(future::transparent)
+  future::plan(future::multiprocess)
   filenameRasterPred<- paste0(tempdir(), "/testMap1.grd") # avoid overwrite
   resultR$resp1summarizedPred<- process_keras(df, predInput=predInputR,
                                               epochs=epochs, replicates=replicates, repVi=repVi,
@@ -123,7 +127,6 @@ test_that("Predict with raster", {
                                               filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
                                               DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
 
-  future::plan(future::multisession(workers=3))
   filenameRasterPred<- paste0(tempdir(), "/testMap2.grd") # avoid overwrite
   resultR$resp1<- process_keras(df, predInput=predInputR[[rev(names(predInputR))]],
                                 epochs=epochs, replicates=replicates, repVi=repVi,
@@ -131,23 +134,33 @@ test_that("Predict with raster", {
                                 filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
                                 DALEXexplainer=FALSE, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
 
-  # filenameRasterPred<- paste0(tempdir(), "/testMap3.grd") # avoid overwrite
-  # TODO: predInput raster with > 1 response Var
-  # resultR$resp2summarizedPred<- process_keras(df, predInput=predInputR, responseVars=1:2, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size, hidden_shape=hidden_shape,
-  #                       summarizePred=TRUE, filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
-  #                       DALEXexplainer=FALSE, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
-  #
-  # filenameRasterPred<- paste0(tempdir(), "/testMap4.grd") # avoid overwrite
-  # resultR$resp2<- process_keras(df, predInput=predInputR, responseVars=1:2, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size, hidden_shape=hidden_shape,
-  #                        summarizePred=FALSE, filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
-  #                        DALEXexplainer=FALSE, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
+  filenameRasterPred<- paste0(tempdir(), "/testMap3.grd") # avoid overwrite
+  resultR$resp2summarizedPred<- process_keras(df, predInput=predInputR, responseVars=1:2, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size, hidden_shape=hidden_shape,
+                        summarizePred=TRUE, filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
+                        DALEXexplainer=FALSE, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
+
+  filenameRasterPred<- paste0(tempdir(), "/testMap4.grd") # avoid overwrite
+  resultR$resp2<- process_keras(df, predInput=predInputR, responseVars=1:2, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size, hidden_shape=hidden_shape,
+                         summarizePred=FALSE, filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
+                         DALEXexplainer=FALSE, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
 
   tmp<- lapply(resultR, function(x){
     expect_s4_class(x$predictions, class="RasterBrick")
   })
   tmp<- expect_equal(names(resultR$resp1summarizedPred$predictions), expected=c("mean", "sd", "se"))
-  tmp<- expect_equal(names(resultR$resp1$predictions), expected=paste0("rep", 1:replicates))
+  tmp<- expect_equal(names(resultR$resp1$predictions), expected=paste0("X1_rep", 1:replicates))
+
+  # lapply(resultR, function(x) names(x$predictions))
+  ## Check NAs position
+  # plot(predInputR)
+  # plot(resultR$resp1summarizedPred$predictions)
+  # plot(resultR$resp1$predictions)
+  # plot(resultR$resp2summarizedPred$predictions)
+  # plot(resultR$resp2$predictions)
+
+  file.remove(dir(tempdir(), "testMap.+\\.gr(i|d)$", full.names=TRUE))
 })
+
 
 test_that("Future plans work", {
   future::plan(future::multisession(workers=3))

@@ -242,16 +242,12 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
 
       if (scaleDataset) file.remove(filenameScaled, gsub("\\.grd$", ".gri", filenameScaled))
 
+      out$predictions<- raster::stack(out$predictions)
+
       lnames<- paste0(rep(colnames(df)[responseVars], times=replicates),
                       rep(paste0("_rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates))),
                           each=length(responseVars)))
-
-      out$predictions<- mapply(function(ras, lname){
-              names(ras)<- lname
-              ras
-            }, ras=out$predictions, lname=lnames)
-
-      out$predictions<- raster::stack(out$predictions)
+      names(out$predictions)<- lnames
 
       if (!is.null(filenameRasterPred)){
         if (summarizePred){
@@ -440,10 +436,10 @@ build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128){
 # https://github.com/rspatial/raster/blob/b1c9d91b1b43b17ea757889dc93f97bd70dc1d2e/R/predict.R
 # ?raster::`predict,Raster-method`
 # ?predict.keras.engine.training.Model
-## TODO: length(responseVars) > 1
-predict.Raster_keras<- function(object, model, filename, fun=predict, ...) {
-  out<- raster::raster(object)
-  big<- !raster::canProcessInMemory(out, raster::nlayers(object) + 1)
+predict.Raster_keras<- function(object, model, filename="", fun=predict, ...) {
+  nLayersOut<- model$output_shape[[2]]
+  out<- raster::brick(object, values=FALSE, nl=nLayersOut)
+  big<- !raster::canProcessInMemory(out, raster::nlayers(object) + nLayersOut)
   filename<- raster::trim(filename)
 
   if (big & filename == "") {
@@ -451,10 +447,11 @@ predict.Raster_keras<- function(object, model, filename, fun=predict, ...) {
   }
 
   if (filename != "") {
-    out<- raster::writeStart(out, filename)
+    out<- raster::writeStart(out, filename, ...)
     todisk<- TRUE
   } else {
-    vv<- matrix(ncol=nrow(out), nrow=ncol(out))
+    # ncol=nrow(), nrow=ncol() from https://rspatial.org/raster/pkg/appendix1.html#a-complete-function
+    vv<- array(NA_real_, dim=c(ncol(out), nrow(out), raster::nlayers(out)))
     todisk<- FALSE
   }
 
@@ -464,7 +461,7 @@ predict.Raster_keras<- function(object, model, filename, fun=predict, ...) {
   if (todisk) {
     for (i in 1:bs$n) {
       v<- raster::getValues(object, row=bs$row[i], nrows=bs$nrows[i])
-      v<- predict(object=model, v, ...)
+      v<- fun(object=model, v, ...)
 
       out<- raster::writeValues(out, v, bs$row[i])
       raster::pbStep(pb, i)
@@ -474,10 +471,10 @@ predict.Raster_keras<- function(object, model, filename, fun=predict, ...) {
   } else {
     for (i in 1:bs$n) {
       v<- raster::getValues(object, row=bs$row[i], nrows=bs$nrows[i])
-      v<- predict(object=model, v, ...)
+      v<- fun(object=model, v, ...)
 
       cols<- bs$row[i]:(bs$row[i] + bs$nrows[i] - 1)
-      vv[,cols]<- matrix(v, nrow=out@ncols)
+      vv[, cols, ]<- array(v, dim=c(ncol(object), length(cols), nLayersOut))
 
       raster::pbStep(pb, i)
     }
