@@ -1,6 +1,6 @@
 Package: NNTools
 Title: What the Package Does (one line, title case)
-Version: 0.0.0.9017
+Version: 0.0.1
 Authors@R: person("Joan", "Maspons", email="j.maspons@creaf.uab.cat", role=c("aut", "cre"))
 Description: What the package does (one paragraph).
 Depends: 
@@ -11,13 +11,12 @@ Imports:
     DALEX,
     future,
     future.apply,
-    future.callr,
     ggplot2,
     ingredients,
     keras,
-    pbapply,
     snow
-Suggests: 
+Suggests:
+    future.callr,
     testthat,
     raster
 License: GPL-3

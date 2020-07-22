@@ -99,7 +99,7 @@ summary.process_NN<- function(object, ...){
 #' @export
 #'
 #' @examples
-#' @import ggplot2
+# @import ggplot2
 plotVI.process_NN<- function(res, vi=c("ratio", "diff", "raw"), dispersion=c("sd", "se", "ci")){
   vi<- match.arg(vi)
   dispersion<- match.arg(dispersion)
@@ -118,11 +118,11 @@ plotVI.process_NN<- function(res, vi=c("ratio", "diff", "raw"), dispersion=c("sd
             se=viD$Mean + viD$`Naive SE`,
             ci=viD$`97.5%`
           )
-  ggplot(viD) +
-    geom_bar( aes(x=stats::reorder(rownames(viD), -viD$Mean), y=viD$Mean),
+  ggplot2::ggplot(viD) +
+    ggplot2::geom_bar( ggplot2::aes(x=stats::reorder(rownames(viD), -viD$Mean), y=viD$Mean),
               stat="identity", fill="skyblue", alpha=0.7) +
-    geom_errorbar( aes(x=rownames(viD), ymin=mins, ymax=maxs),
+    ggplot2::geom_errorbar( ggplot2::aes(x=rownames(viD), ymin=mins, ymax=maxs),
                    width=0.4, colour="orange", alpha=0.9, size=1.3) +
-    theme(axis.text.x=element_text(angle=90, hjust=1, vjust=0.5),
-          axis.ticks.y=element_line(0.4, 0.5, 0.6))
+    ggplot2::theme(axis.text.x=ggplot2::element_text(angle=90, hjust=1, vjust=0.5),
+          axis.ticks.y=ggplot2::element_line(0.4, 0.5, 0.6))
 }
