@@ -55,7 +55,7 @@ summary.process_NN<- function(object, ...){
   if (!is.null(object$variableCoef)){
     out$variableCoef<- lapply(object$variableCoef, function(x){
         t(apply(x, 2, function(y){
-              y<- summary(coda::mcmc(na.omit(y)))
+              y<- summary(coda::mcmc(stats::na.omit(y)))
               c(y$statistics[c("Mean", "SD", "Naive SE")], y$quantiles)
         }))
     })

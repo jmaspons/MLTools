@@ -213,7 +213,7 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
 
     out$variableCoef<- lapply(rownames(variableCoef[[1]]), function(x){
       varCoef<- lapply(variableCoef, function(y){
-        na.omit(y[x, ])
+        stats::na.omit(y[x, ])
       })
 
       degrees<- sapply(varCoef, function(y) y["degree"])
@@ -363,7 +363,7 @@ performance_keras<- function(modelNN, test_data, test_labels, batch_size, verbos
 variableImportance_keras<- function(explainer, repVi=5){
   if (repVi > 0){
     vi<- ingredients::feature_importance(explainer, B=repVi)
-    vi<- reshape(as.data.frame(vi)[, c("variable", "dropout_loss", "permutation")], timevar="permutation", idvar="variable", direction="wide")
+    vi<- stats::reshape(as.data.frame(vi)[, c("variable", "dropout_loss", "permutation")], timevar="permutation", idvar="variable", direction="wide")
     vi<- structure(as.matrix(vi[, -1]),
                    dimnames=list(as.character(vi$variable),
                      paste0("perm", formatC(0:(ncol(vi) -2), format="d", flag="0", width=nchar(repVi)))))
@@ -388,7 +388,7 @@ variableResponse_keras<- function(explainer, variables=NULL, maxPoly=5){
 
   var_coefsL<- by(varResp, paste(varResp$`_label_`, varResp$`_vname_`), function(x){
                   for (deg in 1:maxPoly){
-                    mvar<- lm(`_yhat_` ~ poly(`_x_`, deg, raw=TRUE), data=x)
+                    mvar<- stats::lm(`_yhat_` ~ poly(`_x_`, deg, raw=TRUE), data=x)
                     smvar<- summary(mvar)
 
                     if (smvar$adj.r.squared > 0.9) {
@@ -398,7 +398,7 @@ variableResponse_keras<- function(explainer, variables=NULL, maxPoly=5){
 
                   # Translate response name to the original
                   form<- paste(merge(x[1, "_label_"], thesaurusResp, by.x="x", by.y="respIngredients")$respOri, "~", x[1, "_vname_"])
-                  list(formula=form, coefficients=coef(mvar), degree=deg,
+                  list(formula=form, coefficients=stats::coef(mvar), degree=deg,
                        fit=c(adj.r.squared=smvar$adj.r.squared, r.squared=smvar$r.squared))
   }, simplify=FALSE)
 
