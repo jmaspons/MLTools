@@ -20,7 +20,7 @@ baseFilenameNN<- paste0(tempdir(), "/testNN")
 variableResponse<- TRUE
 DALEXexplainer<- TRUE
 crossValRatio<- 0.7
-NNmodel<- FALSE
+NNmodel<- TRUE
 verbose<- 0
 
 
@@ -94,6 +94,15 @@ test_that("process_keras works", {
   tmp<- expect_equal(unlist(unique(lapply(result$resp2summarizedPred$predictions, colnames))), expected=expectedColnames)
   tmp<- expect_equal(colnames(result$resp1$predictions[[1]]), expected=paste0("rep", 1:replicates))
   tmp<- expect_equal(unlist(unique(lapply(result$resp2$predictions, colnames))), expected=paste0("rep", 1:replicates))
+
+  tmp<- lapply(result, function(x){
+    expect_type(x$model, type="list")
+    lapply(x$model, function(y) expect_type(y, type="raw"))
+    lapply(x$model, function(y) expect_s3_class(keras::unserialize_model(y), class="keras.engine.sequential.Sequential"))
+  })
+  # dir(tempdir(), full.names=TRUE)
+  expect_true(any(grepl(baseFilenameNN, dir(tempdir(), full.names=TRUE))))
+  expect_equal(sum(grepl(baseFilenameNN, dir(tempdir(), full.names=TRUE))), replicates)
 
   tmp<- lapply(result, function(x){
     expect_type(x$DALEXexplainer, type="list")

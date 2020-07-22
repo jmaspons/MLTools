@@ -313,7 +313,7 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
     })
 
     if (!is.null(baseFilenameNN)){
-      tmp<- lapply(seq_along(out), function(i){
+      tmp<- lapply(seq_along(out$model), function(i){
         save_model_hdf5(keras::unserialize_model(out$model[[i]]), filepath=paste0(baseFilenameNN, "_", formatC(i, format="d", flag="0", width=nchar(replicates)), ".hdf5"),
                         overwrite=TRUE, include_optimizer=TRUE)
       })
