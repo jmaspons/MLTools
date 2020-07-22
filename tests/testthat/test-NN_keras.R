@@ -10,7 +10,7 @@ epochs<- 5
 replicates<- 2
 repVi<- 3
 summarizePred<- TRUE
-hidden_shape<- 5
+hidden_shape<- 3
 batch_size<- "all"
 scaleDataset<- FALSE
 tempdirRaster<- tempdir()
@@ -26,9 +26,9 @@ verbose<- 0
 
 test_that("process_keras works", {
   result<- list()
-  # future::plan(future::multisession(workers=1))
-  future::plan(future::transparent)
-  # future::plan(future::sequential)
+
+  # future::plan(future::transparent)
+  future::plan(future::multisession)
   system.time(result$resp1summarizedPred<- process_keras(df=df, predInput=predInput, responseVars=responseVars,
                                                          epochs=epochs, replicates=replicates, repVi=repVi,
                                                          batch_size=batch_size, hidden_shape=hidden_shape,
@@ -42,10 +42,10 @@ test_that("process_keras works", {
                                                          crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
   system.time(result$resp1<- process_keras(df=df, predInput=rev(predInput), responseVars=responseVars,
-                                               epochs=epochs, replicates=replicates, repVi=repVi,
-                                               hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE,
-                                               baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer,
-                                               crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+                                           epochs=epochs, replicates=replicates, repVi=repVi,
+                                           hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE,
+                                           baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer,
+                                           crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
   system.time(result$resp2<- process_keras(df=df, predInput=rev(predInput), responseVars=1:2,
                                            epochs=epochs, replicates=replicates, repVi=repVi,
@@ -65,11 +65,11 @@ test_that("process_keras works", {
     expect_equal(unique(lapply(x$scale, names)), expected=list(c("mean", "sd")))
   })
 
-  expectedViColnames<- paste0(rep(paste0("rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates))), each=repVi + 1), "_",
+  expectedColnames<- paste0(rep(paste0("rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates))), each=repVi + 1), "_",
                               rep(paste0("perm", formatC(0:repVi, format="d", flag="0", width=nchar(repVi))), times=replicates))
   tmp<- lapply(result, function(x){
     expect_type(x$vi, type="double")
-    expect_equal(colnames(x$vi), expected=expectedViColnames)
+    expect_equal(colnames(x$vi), expected=expectedColnames)
   })
 
   tmp<- lapply(result, function(x){
@@ -172,10 +172,7 @@ test_that("Predict with raster", {
 
 
 test_that("Future plans work", {
-  future::plan(future::multisession(workers=3))
   # options(future.globals.onReference = "error")
-  system.time(resSessions<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
-                                          hidden_shape=hidden_shape, DALEXexplainer=FALSE, crossValRatio=crossValRatio, NNmodel=FALSE, verbose=verbose))
 # Error in keras::reset_states(modelNN) : attempt to apply non-function
 # Don't import/export python objects to/from code inside future for PSOCK and callR clusters
 # https://cran.r-project.org/web/packages/future/vignettes/future-4-non-exportable-objects.html
@@ -199,7 +196,7 @@ test_that("Future plans work", {
 
 
 test_that("scaleDataset", {
-  future::plan(future::sequential)
+  future::plan(future::multiprocess)
   system.time(res1<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi,
                                    batch_size=batch_size, scaleDataset=TRUE, hidden_shape=hidden_shape,
                                    baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
@@ -221,12 +218,13 @@ test_that("scaleDataset", {
 
 
 test_that("summary", {
-  future::plan(future::multicore)
+  future::plan(future::multisession)
   system.time(res<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi,
                                    batch_size=batch_size, scaleDataset=TRUE, hidden_shape=hidden_shape,
                                    baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
-  summary(res)
-  NNTools:::summary.process_NN(res)
+  sres<- summary(res)
+  expect_s3_class(sres, class="summary.process_NN")
+  expect_type(sres, type="list")
 })
 

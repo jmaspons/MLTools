@@ -297,6 +297,7 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
       }
 
       if (length(idVarsPred) > 0){
+        ## Add idVars if exists
         out$predictions<- lapply(out$predictions, function(x){
                             cbind(predInputIdVars, x)
                           })
