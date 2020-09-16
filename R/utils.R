@@ -39,8 +39,8 @@ summarize_pred.default<- function(pred){
       }))
 }
 
-summarize_pred.Raster<- function(pred, filename){
-  raster::beginCluster()
+summarize_pred.Raster<- function(pred, filename, nCoresRaster=parallel::detectCores() %/% 2){
+  raster::beginCluster(n=nCoresRaster)
 
   meanMap<- raster::clusterR(pred, function(x){
     raster::calc(x, fun=mean)

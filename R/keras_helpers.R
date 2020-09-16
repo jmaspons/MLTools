@@ -18,6 +18,7 @@
 #' @param baseFilenameNN if no missing, save the NN in hdf5 format on this path with iteration appended.
 #' @param filenameRasterPred if no missing, save the predictions in a RasterBrick format to this file.
 #' @param tempdirRaster path to a directory to save temporal raster files.
+#' @param nCoresRaster number of cores used for parallelized raster cores. Use half of the available cores by default.
 #' @param verbose If > 0, print state and passed to keras functions
 #' @param ... extra parameters for \code\link[future.apply]{future_replicate}}. Better that user use future::plan?
 #'
@@ -29,7 +30,7 @@
 process_keras<- function(df, predInput, responseVars=1, idVars=character(),
                    replicates=10, repVi=5, crossValRatio=0.8, hidden_shape=50, epochs=500, batch_size="all",
                    summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE, variableResponse=TRUE,
-                   baseFilenameNN, filenameRasterPred, tempdirRaster, verbose=0, ...){
+                   baseFilenameNN, filenameRasterPred, tempdirRaster, nCoresRaster=parallel::detectCores() %/% 2, verbose=0, ...){
   if (is.character(responseVars)){
     responseVars<- which(colnames(df) %in% responseVars)
   }
@@ -84,7 +85,7 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
 
         # predInputScaled<- raster::scale(predInput, center=col_means_train, scale=col_stddevs_train)
         # predInputScaled<- raster::calc(predInput, filename=filenameScaled, fun=function(x) scale(x, center=col_means_train, scale=col_stddevs_train))
-        raster::beginCluster()
+        raster::beginCluster(n=nCoresRaster)
         predInput<- raster::clusterR(predInput, function(x){
                               raster::calc(x, fun=function(y) scale(y, center=col_means_train, scale=col_stddevs_train))
                             }, filename=filenameScaled)
@@ -251,13 +252,13 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
 
       if (!is.null(filenameRasterPred)){
         if (summarizePred){
-          out$predictions<- summarize_pred(pred=out$predictions, filename=filenameRasterPred)
+          out$predictions<- summarize_pred(pred=out$predictions, filename=filenameRasterPred, nCoresRaster=nCoresRaster)
         } else {
           out$predictions<- raster::brick(out$predictions, filename=filenameRasterPred)
         }
       } else {
         if (summarizePred){
-          out$predictions<- summarize_pred(out$predictions)
+          out$predictions<- summarize_pred(pred=out$predictions, nCoresRaster=nCoresRaster)
         } else {
           out$predictions<- raster::brick(out$predictions)
         }

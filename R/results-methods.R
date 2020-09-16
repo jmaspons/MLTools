@@ -1,6 +1,7 @@
 #' summary.process_NN
 #'
 #' @param object a process_NN object
+#' @param ... parameters to summarize_pred.Raster function.
 #'
 #' @return
 #' @export
@@ -68,9 +69,9 @@ summary.process_NN<- function(object, ...){
       if (all(names(object$predictions) == c("mean", "sd", "se"))){
         prediction.summary<- object$predictions
       } else {
-        prediction.summary<- summarize_pred.Raster(object$predictions)
+        prediction.summary<- summarize_pred.Raster(pred=object$predictions, ...)
       }
-    } else {
+    } else { # Non raster predictions
       prediction.summary<- lapply(object$predictions, function(x){
           if (all(names(x)[1:3] == c("Mean", "SD", "Naive SE"))){
             return(object$predictions)
