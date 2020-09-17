@@ -86,9 +86,9 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
         # predInputScaled<- raster::scale(predInput, center=col_means_train, scale=col_stddevs_train)
         # predInputScaled<- raster::calc(predInput, filename=filenameScaled, fun=function(x) scale(x, center=col_means_train, scale=col_stddevs_train))
         raster::beginCluster(n=nCoresRaster)
-        predInput<- raster::clusterR(predInput, function(x){
+        predInput<- raster::clusterR(predInput, function(x, col_means_train, col_stddevs_train){
                               raster::calc(x, fun=function(y) scale(y, center=col_means_train, scale=col_stddevs_train))
-                            }, filename=filenameScaled)
+                            }, args=list(col_means_train=col_means_train, col_stddevs_train=col_stddevs_train), filename=filenameScaled)
         raster::endCluster()
 
       }  else if (inherits(predInput, c("data.frame", "matrix"))) {
