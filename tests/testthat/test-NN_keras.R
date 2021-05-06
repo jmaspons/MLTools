@@ -5,6 +5,7 @@ names(varScale)<- paste0("X", 1:length(varScale))
 df<- data.frame(lapply(varScale, function(i) runif(100) * i))
 predInput<- data.frame(lapply(varScale, function(i) runif(50) * i))
 responseVars<- 1
+crossValRatio<- c(train=0.6, test=0.2, validate=0.2)
 idVars<- character()
 epochs<- 5
 replicates<- 2
@@ -19,9 +20,10 @@ baseFilenameRasterPred<- paste0(tempdirRaster, "/testMap")
 baseFilenameNN<- paste0(tempdir(), "/testNN")
 variableResponse<- TRUE
 DALEXexplainer<- TRUE
-crossValRatio<- 0.7
 NNmodel<- TRUE
 verbose<- 0
+caseClass<- c(rep("A", 23), rep("B", 77))
+weight<- "class"
 
 
 test_that("process_keras works", {

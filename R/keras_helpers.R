@@ -1,13 +1,15 @@
 #' Title
 #'
-#' @param df a data.frame whith response variable in the first column
+#' @param df a data.frame with response variable in the first column
 #' @param predInput a Raster or a data.frame with columns 1 and 2 corresponding to longitude and latitude + variables for the model
-#' @param responseVars response variables. Column names or indexes on df
+#' @param responseVars response variables. Column names or indexes on df.
+#' @param caseClass class of the samples used to weight cases. Column names or indexes on df, or a vector with the class for each rows in df.
 #' @param idVars id column names or indexes on df and/or predInput. Deprecated default for compatibility c("x", "y")
+#' @param weight Optional array of the same length as \code{nrow(df)}, containing weights to apply to the model's loss for each sample.
 #' @param replicates number of replicates
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid report variable importance
-#' @param crossValRatio Proportion of the dataset used to train the model. Default to 0.8
-#' @param hidden_shape number of neurons in the hidden layers of the nerual network model.
+#' @param crossValRatio Proportion of the dataset used to train, test and validate the model. Default to \code{c(train=0.6, test=0.2, validate=0.2)}.
+#' @param hidden_shape number of neurons in the hidden layers of the neural network model.
 #' @param epochs parameter for \code\link[keras]{fit}}.
 #' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
 #' @param summarizePred if \code{TRUE}, return the mean, sd and se of the predictors. if \code{FALSE}, return the predictions for each replicate.
@@ -16,7 +18,7 @@
 #' @param DALEXexplainer if TRUE, return a explainer for the models from \code\link[DALEX]{explain}} function. It doesn't work with multisession future plans.
 #' @param variableResponse if TRUE, return aggregated_profiles_explainer object from \code\link[ingredients]{partial_dependency}} and the coefficients of the adjusted lineal model.
 #' @param baseFilenameNN if no missing, save the NN in hdf5 format on this path with iteration appended.
-#' @param filenameRasterPred if no missing, save the predictions in a RasterBrick format to this file.
+#' @param filenameRasterPred if no missing, save the predictions in a RasterBrick to this file.
 #' @param tempdirRaster path to a directory to save temporal raster files.
 #' @param nCoresRaster number of cores used for parallelized raster cores. Use half of the available cores by default.
 #' @param verbose If > 0, print state and passed to keras functions
@@ -27,8 +29,8 @@
 #' @import keras
 #' @importFrom stats predict
 #' @examples
-process_keras<- function(df, predInput, responseVars=1, idVars=character(),
-                   replicates=10, repVi=5, crossValRatio=0.8, hidden_shape=50, epochs=500, batch_size="all",
+process_keras<- function(df, predInput, responseVars=1, caseClass=NULL, idVars=character(), weight="class",
+                   replicates=10, repVi=5, crossValRatio=c(train=0.6, test=0.2, validate=0.2), hidden_shape=50, epochs=500, batch_size="all",
                    summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE, variableResponse=TRUE,
                    baseFilenameNN, filenameRasterPred, tempdirRaster, nCoresRaster=parallel::detectCores() %/% 2, verbose=0, ...){
   if (is.character(responseVars)){
@@ -99,15 +101,32 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
     }
   }
 
-  res<- future.apply::future_replicate(replicates, {
+  idxSetsL<- future.apply::future_replicate(replicates, bootstrap_train_test_validate(df, ratio=crossValRatio, caseClass=caseClass, weight=weight), simplify=FALSE)
+  res<- future.apply::future_lapply(idxSetsL, function(idxSets){
     resi<- list()
-    crossValSets<- NNTools:::splitdf(df, ratio=crossValRatio)
+    # crossValSets<- NNTools:::splitdf(df, ratio=crossValRatio, sample_weight=sample_weight)
+    crossValSets<- lapply(idxSets[intersect(c("trainset", "testset", "validateset"), names(idxSets))], function(x) df[x, ])
 
     train_labels<- as.matrix(crossValSets$trainset[, responseVars, drop=FALSE])
     train_data<- as.matrix(crossValSets$trainset[, predVars, drop=FALSE])
 
     test_labels<- as.matrix(crossValSets$testset[, responseVars, drop=FALSE])
     test_data<- as.matrix(crossValSets$testset[, predVars, drop=FALSE])
+
+    sample_weight<- idxSets[intersect(c("weight.train", "weight.test", "weight.validate"), names(idxSets))]
+
+    # If no validation set exist, use test set to check performance
+    if (nrow(crossValSets$validateset) > 0){
+      validate_labels<- as.matrix(crossValSets$validateset[, responseVars, drop=FALSE])
+      validate_data<- as.matrix(crossValSets$validateset[, predVars, drop=FALSE])
+    } else {
+      validate_labels<- test_labels
+      validate_data<- test_data
+
+      if (length(sample_weight) > 0){
+        sample_weight$weight.validate<- sample_weight$weight.test
+      }
+    }
 
     if (!scaleDataset){
       train_data<- scale(train_data)
@@ -130,16 +149,22 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
     early_stop<- keras::callback_early_stopping(monitor="val_loss", patience=30)
 
     modelNN<- NNTools:::train_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels,
-                           test_data=test_data, test_labels=test_labels, epochs=epochs,
-                           batch_size=batch_size, callbacks=early_stop, verbose=verbose)
+                           test_data=test_data, test_labels=test_labels, epochs=epochs, batch_size=batch_size,
+                           sample_weight=sample_weight, callbacks=early_stop, verbose=verbose)
 
     if (NNmodel){
       resi$model<- keras::serialize_model(modelNN)
     }
 
     ## Model performance
-    resi$performance<- NNTools:::performance_keras(modelNN=modelNN, test_data=test_data, test_labels=test_labels,
-                             batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size), verbose=verbose)
+    if (length(sample_weight) > 0){
+      sample_weight.validate<- as.matrix(sample_weight$weight.validate)
+    } else {
+      sample_weight.validate<- NULL
+    }
+    resi$performance<- NNTools:::performance_keras(modelNN=modelNN, test_data=validate_data, test_labels=validate_labels,
+                             batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size),
+                             sample_weight=sample_weight.validate, verbose=verbose)
 
     ## Explain model
     if (repVi > 0 | variableResponse | DALEXexplainer){
@@ -173,7 +198,7 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
     }
 
     return(resi)
-  }, simplify=FALSE, ...)
+  }, future.seed=TRUE, ...)
 
   if (verbose > 0) message("Iterations finished. Gathering results...")
 
@@ -334,28 +359,35 @@ process_keras<- function(df, predInput, responseVars=1, idVars=character(),
 }
 
 
-train_keras<- function(modelNN, train_data, train_labels, test_data, test_labels, epochs, batch_size, callbacks=NULL, verbose=0){
+train_keras<- function(modelNN, train_data, train_labels, test_data, test_labels, epochs, batch_size, sample_weight=NULL, callbacks=NULL, verbose=0){
+  if (is.null(sample_weight)){
+    validation_data<- list(test_data, test_labels)
+  } else {
+    validation_data<- list(test_data, test_labels, sample_weight$weight.test)
+    sample_weight<- sample_weight$weight.train
+  }
+
   history<- keras::fit(object=modelNN,
                 x=train_data,
                 y=train_labels,
-                epochs=epochs,
-                validation_data=list(test_data, test_labels),
-                verbose=verbose,
                 batch_size=ifelse(batch_size %in% "all", nrow(train_data), batch_size),
-                callbacks=callbacks
+                epochs=epochs,
+                verbose=verbose,
+                callbacks=callbacks,
+                validation_data=validation_data,
+                sample_weight=sample_weight
   )
 
   return(modelNN)
 }
 
 
-# @importFrom caret postResample
-performance_keras<- function(modelNN, test_data, test_labels, batch_size, verbose=0){
-  perf<- keras::evaluate(modelNN, test_data, test_labels, verbose=verbose,
-                  batch_size=batch_size)
-  perfCaret<- caret::postResample(pred=stats::predict(modelNN, test_data), obs=test_labels)
+# @importFrom caret postResample sample_weight
+performance_keras<- function(modelNN, test_data, test_labels, batch_size, sample_weight=NULL, verbose=0){
+  perf<- keras::evaluate(object=modelNN, x=test_data, y=test_labels, batch_size=batch_size, verbose=verbose, sample_weight=sample_weight)
+  perfCaret<- caret::postResample(pred=stats::predict(modelNN, test_data), obs=test_labels) # No weighting
 
-  out<- data.frame(data.frame(perf), as.list(perfCaret))
+  out<- data.frame(as.list(perf), as.list(perfCaret))
   return(out)
 }
 
