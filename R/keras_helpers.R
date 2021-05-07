@@ -31,13 +31,11 @@
 #' @import keras
 #' @importFrom stats predict
 #' @examples
-process_keras<- function(df, predInput, responseVars=1, caseClass=NULL, idVars=character(), weight="class",
-                   replicates=10, repVi=5, crossValStrategy=c("Kfold", "bootstrap"), crossValRatio=c(train=0.6, test=0.2, validate=0.2), hidden_shape=50, epochs=500, batch_size="all",
-                   replicates=10, repVi=5, crossValStrategy=c("Kfold", "bootstrap"), k=5, crossValRatio=c(train=0.6, test=0.2, validate=0.2), hidden_shape=50, epochs=500, batch_size="all",
+process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars=character(), weight="class",
                    repVi=5, crossValStrategy=c("Kfold", "bootstrap"), k=5, replicates=10, crossValRatio=c(train=0.6, test=0.2, validate=0.2),
                    hidden_shape=50, epochs=500, batch_size="all",
                    summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE, variableResponse=TRUE,
-                   baseFilenameNN, filenameRasterPred, tempdirRaster, nCoresRaster=parallel::detectCores() %/% 2, verbose=0, ...){
+                   baseFilenameNN=NULL, filenameRasterPred=NULL, tempdirRaster=NULL, nCoresRaster=parallel::detectCores() %/% 2, verbose=0, ...){
   crossValStrategy<- match.arg(crossValStrategy)
   if (is.character(responseVars)){
     responseVars<- which(colnames(df) %in% responseVars)
@@ -46,12 +44,6 @@ process_keras<- function(df, predInput, responseVars=1, caseClass=NULL, idVars=c
     idVars<- which(colnames(df) %in% idVars)
   }
   predVars<- setdiff(1:ncol(df), c(responseVars, idVars))
-
-  ## Avoid missing checks in futures
-  if (missing(predInput)) predInput<- NULL
-  if (missing(baseFilenameNN)) baseFilenameNN<- NULL
-  if (missing(filenameRasterPred)) filenameRasterPred<- NULL
-  if (missing(tempdirRaster)) tempdirRaster<- NULL
 
   ## Select and sort predVars in predInput based on var names matching in df
   if (!is.null(predInput)){
