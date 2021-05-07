@@ -6,9 +6,11 @@
 #' @param caseClass class of the samples used to weight cases. Column names or indexes on df, or a vector with the class for each rows in df.
 #' @param idVars id column names or indexes on df and/or predInput. Deprecated default for compatibility c("x", "y")
 #' @param weight Optional array of the same length as \code{nrow(df)}, containing weights to apply to the model's loss for each sample.
-#' @param replicates number of replicates
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid report variable importance
-#' @param crossValRatio Proportion of the dataset used to train, test and validate the model. Default to \code{c(train=0.6, test=0.2, validate=0.2)}.
+#' @param crossValStrategy \code{Kfold} or \code{bootstrap}.
+#' @param replicates number of replicates when \code{crossValStrategy="bootstrap"}.
+#' @param k number of data partitions when \code{crossValStrategy="Kfold"}.
+#' @param crossValRatio Proportion of the dataset used to train, test and validate the model when \code{crossValStrategy="bootstrap"}. Default to \code{c(train=0.6, test=0.2, validate=0.2)}.
 #' @param hidden_shape number of neurons in the hidden layers of the neural network model.
 #' @param epochs parameter for \code\link[keras]{fit}}.
 #' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
@@ -30,9 +32,13 @@
 #' @importFrom stats predict
 #' @examples
 process_keras<- function(df, predInput, responseVars=1, caseClass=NULL, idVars=character(), weight="class",
-                   replicates=10, repVi=5, crossValRatio=c(train=0.6, test=0.2, validate=0.2), hidden_shape=50, epochs=500, batch_size="all",
+                   replicates=10, repVi=5, crossValStrategy=c("Kfold", "bootstrap"), crossValRatio=c(train=0.6, test=0.2, validate=0.2), hidden_shape=50, epochs=500, batch_size="all",
+                   replicates=10, repVi=5, crossValStrategy=c("Kfold", "bootstrap"), k=5, crossValRatio=c(train=0.6, test=0.2, validate=0.2), hidden_shape=50, epochs=500, batch_size="all",
+                   repVi=5, crossValStrategy=c("Kfold", "bootstrap"), k=5, replicates=10, crossValRatio=c(train=0.6, test=0.2, validate=0.2),
+                   hidden_shape=50, epochs=500, batch_size="all",
                    summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE, variableResponse=TRUE,
                    baseFilenameNN, filenameRasterPred, tempdirRaster, nCoresRaster=parallel::detectCores() %/% 2, verbose=0, ...){
+  crossValStrategy<- match.arg(crossValStrategy)
   if (is.character(responseVars)){
     responseVars<- which(colnames(df) %in% responseVars)
   }
@@ -101,11 +107,16 @@ process_keras<- function(df, predInput, responseVars=1, caseClass=NULL, idVars=c
     }
   }
 
-  idxSetsL<- future.apply::future_replicate(replicates, bootstrap_train_test_validate(df, ratio=crossValRatio, caseClass=caseClass, weight=weight), simplify=FALSE)
-  res<- future.apply::future_lapply(idxSetsL, function(idxSets){
+
+  idxSetsL<- switch(crossValStrategy,
+    bootstrap=bootstrap_train_test_validate(df, replicates=replicates, ratio=crossValRatio, caseClass=caseClass, weight=weight),
+    Kfold=kFold_train_test_validate(df, k=k, caseClass=caseClass, weight=weight)
+  )
+
+  res<- future.apply::future_lapply(idxSetsL$replicates, function(idx.repli){
     resi<- list()
     # crossValSets<- NNTools:::splitdf(df, ratio=crossValRatio, sample_weight=sample_weight)
-    crossValSets<- lapply(idxSets[intersect(c("trainset", "testset", "validateset"), names(idxSets))], function(x) df[x, ])
+    crossValSets<- lapply(idx.repli[intersect(c("trainset", "testset"), names(idx.repli))], function(x) df[x, ])
 
     train_labels<- as.matrix(crossValSets$trainset[, responseVars, drop=FALSE])
     train_data<- as.matrix(crossValSets$trainset[, predVars, drop=FALSE])
@@ -113,17 +124,21 @@ process_keras<- function(df, predInput, responseVars=1, caseClass=NULL, idVars=c
     test_labels<- as.matrix(crossValSets$testset[, responseVars, drop=FALSE])
     test_data<- as.matrix(crossValSets$testset[, predVars, drop=FALSE])
 
-    sample_weight<- idxSets[intersect(c("weight.train", "weight.test", "weight.validate"), names(idxSets))]
+    sample_weight<- idx.repli[intersect(c("weight.train", "weight.test"), names(idx.repli))]
+    # if (length(sample_weight) == 0) sample_weight<- NULL
 
     # If no validation set exist, use test set to check performance
-    if (nrow(crossValSets$validateset) > 0){
-      validate_labels<- as.matrix(crossValSets$validateset[, responseVars, drop=FALSE])
-      validate_data<- as.matrix(crossValSets$validateset[, predVars, drop=FALSE])
+    if (length(idxSetsL$validateset) > 0){
+      validate_labels<- as.matrix(df[idxSetsL$validateset, responseVars, drop=FALSE])
+      validate_data<- as.matrix(df[idxSetsL$validateset, predVars, drop=FALSE])
+      if (!is.null(idxSetsL$weight.validate)){
+        sample_weight$weight.validate<- idxSetsL$weight.validate
+      }
     } else {
       validate_labels<- test_labels
       validate_data<- test_data
 
-      if (length(sample_weight) > 0){
+      if (!is.null(idxSetsL$weight.validate)){
         sample_weight$weight.validate<- sample_weight$weight.test
       }
     }
@@ -204,7 +219,7 @@ process_keras<- function(df, predInput, responseVars=1, caseClass=NULL, idVars=c
 
 
   ## Gather results
-  names(res)<- paste0("rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates)))
+  names(res)<- paste0("rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res))))
 
   out<- list(performance=do.call(rbind, lapply(res, function(x) x$performance)))
 
@@ -224,7 +239,7 @@ process_keras<- function(df, predInput, responseVars=1, caseClass=NULL, idVars=c
     vi<- do.call(cbind, vi)
 
     out$vi<- vi[order(rowSums(vi)), , drop=FALSE] ## Order by average vi
-    colnames(out$vi)<- paste0(rep(paste0("rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates))), each=nPerm),
+    colnames(out$vi)<- paste0(rep(paste0("rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res)))), each=nPerm),
                               "_", colnames(out$vi))
   }
 
@@ -270,8 +285,8 @@ process_keras<- function(df, predInput, responseVars=1, caseClass=NULL, idVars=c
 
       out$predictions<- raster::stack(out$predictions)
 
-      lnames<- paste0(rep(colnames(df)[responseVars], times=replicates),
-                      rep(paste0("_rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates))),
+      lnames<- paste0(rep(colnames(df)[responseVars], times=length(res)),
+                      rep(paste0("_rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res)))),
                           each=length(responseVars)))
       names(out$predictions)<- lnames
 
@@ -317,7 +332,7 @@ process_keras<- function(df, predInput, responseVars=1, caseClass=NULL, idVars=c
       }else{
         out$predictions<- lapply(out$predictions, function(x){
                               rownames(x)<- rownames(predInput)
-                              colnames(x)<- paste0("rep", formatC(1:replicates, format="d", flag="0", width=nchar(replicates)))
+                              colnames(x)<- paste0("rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res))))
                               x
                            })
       }
@@ -341,7 +356,7 @@ process_keras<- function(df, predInput, responseVars=1, caseClass=NULL, idVars=c
 
     if (!is.null(baseFilenameNN)){
       tmp<- lapply(seq_along(out$model), function(i){
-        save_model_hdf5(keras::unserialize_model(out$model[[i]]), filepath=paste0(baseFilenameNN, "_", formatC(i, format="d", flag="0", width=nchar(replicates)), ".hdf5"),
+        save_model_hdf5(keras::unserialize_model(out$model[[i]]), filepath=paste0(baseFilenameNN, "_", formatC(i, format="d", flag="0", width=nchar(length(res))), ".hdf5"),
                         overwrite=TRUE, include_optimizer=TRUE)
       })
     }
