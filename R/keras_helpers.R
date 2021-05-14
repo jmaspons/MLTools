@@ -1,4 +1,4 @@
-#' Title
+#' Neural network model with keras
 #'
 #' @param df a data.frame with response variable in the first column
 #' @param predInput a Raster or a data.frame with columns 1 and 2 corresponding to longitude and latitude + variables for the model
@@ -43,6 +43,14 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
   if (is.character(idVars)){
     idVars<- which(colnames(df) %in% idVars)
   }
+  if (length(caseClass) == 1){
+    if (is.numeric(caseClass)){
+      idVars<- c(idVars, caseClass)
+    } else if (is.character(caseClass)){
+      idVars<- c(idVars, which(colnames(df) %in% caseClass))
+    }
+  }
+
   predVars<- setdiff(1:ncol(df), c(responseVars, idVars))
 
   ## Select and sort predVars in predInput based on var names matching in df
