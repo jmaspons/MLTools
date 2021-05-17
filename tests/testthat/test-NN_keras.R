@@ -24,7 +24,7 @@ variableResponse<- TRUE
 DALEXexplainer<- TRUE
 NNmodel<- TRUE
 verbose<- 0
-caseClass<- c(rep("A", 23), rep("B", 77))
+caseClass<- c(rep("A", 23), rep("B", 75), rep("C", 2))
 weight<- "class"
 
 
@@ -52,14 +52,14 @@ test_that("process_keras works", {
                                            crossValStrategy=crossValStrategy[2], replicates=replicates,
                                            hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE,
                                            baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer,
-                                           crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+                                           crossValRatio=crossValRatio[1], NNmodel=NNmodel, verbose=verbose))
 
   system.time(result$resp2<- process_keras(df=df, predInput=rev(predInput), responseVars=1:2,
                                            epochs=epochs, repVi=repVi,
                                            crossValStrategy=crossValStrategy[1], k=k,
                                            hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE,
                                            baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer,
-                                           crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+                                           crossValRatio=c(train=0.8, test=0.2), NNmodel=NNmodel, verbose=verbose))
 
   tmp<- lapply(result, function(x) expect_s3_class(x, class="process_NN"))
 
@@ -112,7 +112,7 @@ test_that("process_keras works", {
   })
   # dir(tempdir(), full.names=TRUE)
   expect_true(any(grepl(baseFilenameNN, dir(tempdir(), full.names=TRUE))))
-  expect_equal(sum(grepl(baseFilenameNN, dir(tempdir(), full.names=TRUE))), k)
+  expect_equal(sum(grepl(baseFilenameNN, dir(tempdir(), full.names=TRUE))), k - 1)
 
   tmp<- lapply(result, function(x){
     expect_type(x$DALEXexplainer, type="list")

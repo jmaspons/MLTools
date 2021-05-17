@@ -24,7 +24,7 @@ variableResponse<- TRUE
 DALEXexplainer<- TRUE
 NNmodel<- TRUE
 verbose<- 0
-caseClass<- c(rep("A", 23), rep("B", 77))
+caseClass<- c(rep("A", 23), rep("B", 75), rep("C", 2))
 weight<- "class"
 
 test_that("bootstrap cross-validation works", {
@@ -35,10 +35,14 @@ test_that("bootstrap cross-validation works", {
 
   system.time(result$bootstrap<- bootstrap_train_test_validate(df, ratio=crossValRatio))
   system.time(result$bootstrap_noValidation<- bootstrap_train_test_validate(df, ratio=c(train=0.8, test=.2, validate=0)))
+  system.time(result$bootstrap_noValidation<- bootstrap_train_test_validate(df, ratio=c(train=0.8, test=.2)))
+  system.time(result$bootstrap_noValidation<- bootstrap_train_test_validate(df, ratio=0.7))
   system.time(result$bootstrap_weightClass<- bootstrap_train_test_validate(df, ratio=crossValRatio, caseClass=caseClass, weight="class"))
+  system.time(result$bootstrap_weightClass<- bootstrap_train_test_validate(df, ratio=crossValRatio, caseClass=factor(caseClass), weight="class"))
 
   system.time(result$kFold<- kFold_train_test_validate(df, k=k))
   system.time(result$kFold_weightClass<- kFold_train_test_validate(df, k=k, caseClass=caseClass, weight="class"))
+  system.time(result$kFold_weightClass<- kFold_train_test_validate(df, k=k, caseClass=factor(caseClass), weight="class"))
 
   # str(result)
 

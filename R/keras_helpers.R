@@ -10,7 +10,7 @@
 #' @param crossValStrategy \code{Kfold} or \code{bootstrap}.
 #' @param replicates number of replicates when \code{crossValStrategy="bootstrap"}.
 #' @param k number of data partitions when \code{crossValStrategy="Kfold"}.
-#' @param crossValRatio Proportion of the dataset used to train, test and validate the model when \code{crossValStrategy="bootstrap"}. Default to \code{c(train=0.6, test=0.2, validate=0.2)}.
+#' @param crossValRatio Proportion of the dataset used to train, test and validate the model when \code{crossValStrategy="bootstrap"}. Default to \code{c(train=0.6, test=0.2, validate=0.2)}. If there is only one value, will be taken as a train proportion and no validate set.
 #' @param hidden_shape number of neurons in the hidden layers of the neural network model.
 #' @param epochs parameter for \code\link[keras]{fit}}.
 #' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
@@ -110,7 +110,7 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
 
   idxSetsL<- switch(crossValStrategy,
     bootstrap=bootstrap_train_test_validate(df, replicates=replicates, ratio=crossValRatio, caseClass=caseClass, weight=weight),
-    Kfold=kFold_train_test_validate(df, k=k, caseClass=caseClass, weight=weight)
+    Kfold=kFold_train_test_validate(d=df, k=k, caseClass=caseClass, weight=weight)
   )
 
   res<- future.apply::future_lapply(idxSetsL$replicates, function(idx.repli){

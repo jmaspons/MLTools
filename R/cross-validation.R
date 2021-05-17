@@ -31,7 +31,12 @@ subset_train_test_validate<- function(d, ratio=c(train=0.6, test=0.2, validate=0
     } else {
       stop("«caseClass» parameter should be an atomic value indicating a column of d, a vector with values for every case in d or 1 if d is a vector containing caseClass.")
     }
-    indexL<- split(index, caseClass)
+    indexL<- split(index, caseClass, drop=TRUE)
+  }
+
+  if (length(ratio) == 1){
+    names(ratio)<- NULL
+    ratio<- c(train=ratio, test=1 - ratio) # Assuming ratio is the train proportion and no validation set
   }
 
   nSubsetL<- lapply(indexL, function(x){
@@ -70,6 +75,10 @@ subset_train_test_validate<- function(d, ratio=c(train=0.6, test=0.2, validate=0
 
 
 bootstrap_train_test_validate<- function(d, replicates=10, ratio=c(train=0.6, test=0.2, validate=0.2), caseClass=NULL, weight="class"){
+  if (length(ratio) == 1){
+    names(ratio)<- NULL
+    ratio<- c(train=ratio, test=1 - ratio) # Assuming ratio is the train proportion and no validation set
+  }
   idxL0<- subset_train_test_validate(d, ratio=ratio, caseClass=caseClass, weight=weight)
   out<- list(validateset=idxL0$validateset)
   if (!is.null(idxL0$weight.validate)) out$weight.validate<- idxL0$weight.validate
@@ -149,29 +158,40 @@ kFold_train_test_validate<- function(d, k=5, caseClass=NULL, weight="class"){
     } else {
       stop("«caseClass» parameter should be an atomic value indicating a column of d, a vector with values for every case in d or 1 if d is a vector containing caseClass.")
     }
-    indexL<- split(index, caseClass)
+    indexL<- split(index, caseClass, drop=TRUE)
   }
 
   subsetIdxL<- lapply(indexL, function(idx){
     idx.idx<- caret::createFolds(rep("", length(idx)), k=k)
+    if (length(idx.idx) < k){ # class with n < k
+      nMiss<- k - length(idx.idx)
+      if (nMiss > length(idx.idx)){
+        resample<- sample(idx.idx, nMiss, replace=TRUE)
+        warning("The number of samples in a case class category is << k. Sampling with replacement.")
+      } else {
+        resample<- sample(idx.idx, nMiss)
+      }
+      idx.idx<- structure(c(idx.idx, resample), names=paste0("Fold", 1:k))
+    }
     lapply(idx.idx, function(x) idx[x])
   })
 
 
-  reps<- lapply(seq_along(subsetIdxL[[1]]), function(i){
-    structure(do.call(c, lapply(subsetIdxL, function(x) x[[i]])), names=NULL)
+  reps<- lapply(1:k, function(i){
+    sort(structure(do.call(c, lapply(subsetIdxL, function(x) x[[i]])), names=NULL))
   })
 
-  idx.folds<- unlist(lapply(subsetIdxL, function(x) x[-1]))
+
+  idx.folds<- unlist(lapply(subsetIdxL, function(x) x[-1])) # reps[1] = validateset
   reps<- lapply(reps, function(x){
-    testset<- x[-1]
+    testset<- x
     trainset<- setdiff(idx.folds, testset)
 
     return(list(trainset=trainset, testset=testset))
   })
 
-  out<- list(validateset=structure(do.call(c, lapply(subsetIdxL, function(x) x[[1]])), names=NULL),
-             weight.validate=NULL, replicates=reps)
+  out<- list(validateset=reps[[1]]$testset,
+             weight.validate=NULL, replicates=reps[-1])
 
   if (!is.null(caseClass)){
     if (all(weight == "class")){
@@ -196,6 +216,7 @@ kFold_train_test_validate<- function(d, k=5, caseClass=NULL, weight="class"){
 
 ## Weight samples ----
 weight.class<- function(idx, caseClass, weight="class"){
+  caseClass<- as.character(caseClass)
   caseClassIdx<- caseClass[idx]
   nClasses<- length(unique(caseClassIdx))
 
