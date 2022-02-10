@@ -33,8 +33,8 @@
 #' @examples
 process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars=character(), weight="class",
                    repVi=5, crossValStrategy=c("Kfold", "bootstrap"), k=5, replicates=10, crossValRatio=c(train=0.6, test=0.2, validate=0.2),
-                   hidden_shape=50, epochs=500, batch_size="all",
-                   summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE, variableResponse=TRUE,
+                   hidden_shape=50, epochs=500, maskNA=NULL, batch_size="all",
+                   summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE, variableResponse=FALSE,
                    baseFilenameNN=NULL, filenameRasterPred=NULL, tempdirRaster=NULL, nCoresRaster=parallel::detectCores() %/% 2, verbose=0, ...){
   crossValStrategy<- match.arg(crossValStrategy)
   if (is.character(responseVars)){
@@ -81,6 +81,14 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
     df[, predVars]<- df.scaled
     col_means_train<- attr(df.scaled, "scaled:center")
     col_stddevs_train<- attr(df.scaled, "scaled:scale")
+    rm(df.scaled)
+
+    if (!is.null(maskNA)){
+      df[, predVars]<- lapply(df[, predVars, drop=FALSE], function(x){
+        x[is.na(x)]<- maskNA
+        x
+      })
+    }
 
     if (!is.null(predInput)){
 
@@ -97,11 +105,21 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
         predInput<- raster::clusterR(predInput, function(x, col_means_train, col_stddevs_train){
                               raster::calc(x, fun=function(y) scale(y, center=col_means_train, scale=col_stddevs_train))
                             }, args=list(col_means_train=col_means_train, col_stddevs_train=col_stddevs_train), filename=filenameScaled)
+        if (!is.null(maskNA)){
+          predInput<- raster::clusterR(predInput, function(x, maskNA){
+                                raster::calc(x, fun=function(y) { y[is.na(y)]<- maskNA; y } )
+                              }, args=list(maskNA=maskNA), filename=filenameScaled)
+        }
         raster::endCluster()
 
       }  else if (inherits(predInput, c("data.frame", "matrix"))) {
-        predInput<- scale(predInput[, , drop=FALSE],
-                          center=col_means_train, scale=col_stddevs_train)
+        predInput<- scale(predInput[, , drop=FALSE], center=col_means_train, scale=col_stddevs_train)
+        if (!is.null(maskNA)){
+          predInput[]<- lapply(predInput, function(x){
+            x[is.na(x)]<- maskNA
+            x
+          })
+        }
       }
 
     }
@@ -150,6 +168,21 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
       col_stddevs_train<- attr(train_data, "scaled:scale")
 
       test_data<- scale(test_data, center=col_means_train, scale=col_stddevs_train)
+
+      if (!is.null(maskNA)){
+        train_data<- apply(train_data, 2, function(x){
+          x[is.na(x)]<- maskNA
+          x
+        })
+        test_data<- apply(test_data, 2, function(x){
+          x[is.na(x)]<- maskNA
+          x
+        })
+        validate_data<- apply(validate_data, 2, function(x){
+          x[is.na(x)]<- maskNA
+          x
+        })
+      }
     }
 
     resi$scaleVals<- data.frame(mean=col_means_train, sd=col_stddevs_train)
@@ -207,8 +240,8 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
         batch_sizePred<- ifelse(batch_size %in% "all", nrow(predInput), batch_size)
       }
 
-      resi$predictions<- NNTools:::predict_keras(modelNN=modelNN, predInput=predInput, scaleInput=!scaleDataset,
-                               col_means_train=col_means_train, col_stddevs_train=col_stddevs_train,
+      resi$predictions<- NNTools:::predict_keras(modelNN=modelNN, predInput=predInput, maskNA=maskNA,
+                               scaleInput=!scaleDataset, col_means_train=col_means_train, col_stddevs_train=col_stddevs_train,
                                batch_size=batch_sizePred, tempdirRaster=tempdirRaster)
     }
 
@@ -466,12 +499,19 @@ variableResponse_keras<- function(explainer, variables=NULL, maxPoly=5){
 
 ## FUNCTIONS: Build and Train Neural Networks ----
 # 2 hidden layers
-build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128){
-  model<- keras_model_sequential() %>%
-    layer_dense(units=hidden_shape, activation="relu", input_shape=input_shape) %>%
-    layer_dense(units=hidden_shape, activation="relu") %>%
-    layer_dense(units=output_shape)
-
+build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128, mask=NULL){
+  if (is.null(mask)){
+    model<- keras_model_sequential() %>%
+      layer_dense(units=hidden_shape, activation="relu", input_shape=input_shape) %>%
+      layer_dense(units=hidden_shape, activation="relu") %>%
+      layer_dense(units=output_shape)
+  } else {
+    model<- keras_model_sequential() %>%
+      layer_masking(mask_value=mask, input_shape=input_shape) %>%
+      layer_dense(units=hidden_shape, activation="relu") %>%
+      layer_dense(units=hidden_shape, activation="relu") %>%
+      layer_dense(units=output_shape)
+  }
   compile(model,
           loss="mse",
           optimizer=optimizer_rmsprop(),
@@ -541,6 +581,7 @@ predict.Raster_keras<- function(object, model, filename="", fun=predict, ...) {
 #'
 #' @param modelNN
 #' @param predInput data.frame or raster with colnames or layer names matching the expected input for modelNN
+#' @param maskNA
 #' @param scaleInput
 #' @param col_means_train
 #' @param col_stddevs_train
@@ -551,7 +592,7 @@ predict.Raster_keras<- function(object, model, filename="", fun=predict, ...) {
 #' @return
 #'
 #' @examples
-predict_keras<- function(modelNN, predInput, scaleInput=FALSE, col_means_train, col_stddevs_train, batch_size, filename="", tempdirRaster=NULL){
+predict_keras<- function(modelNN, predInput, maskNA=NULL, scaleInput=FALSE, col_means_train, col_stddevs_train, batch_size, filename="", tempdirRaster=NULL){
   if (inherits(predInput, "Raster") & requireNamespace("raster", quietly=TRUE)){
     if (!is.null(tempdirRaster)){
       filenameScaled<- tempfile(tmpdir=tempdirRaster, fileext=".grd")
@@ -566,6 +607,11 @@ predict_keras<- function(modelNN, predInput, scaleInput=FALSE, col_means_train, 
       # predInputScaled<- raster::scale(predInput, center=col_means_train, scale=col_stddevs_train)
       predInputScaled<- raster::calc(predInput, filename=filenameScaled,
                                   fun=function(x) scale(x, center=col_means_train, scale=col_stddevs_train))
+      if (!is.null(maskNA)){
+        predInputScaled<- raster::clusterR(predInput, function(x, maskNA){
+                                    raster::calc(x, fun=function(y) { y[is.na(y)]<- maskNA; y } )
+                                  }, args=list(maskNA=maskNA), filename=filenameScaled)
+      }
       # ?keras::predict.keras.engine.training.Model
       # ?raster::`predict,Raster-method`
     } else {
@@ -591,6 +637,12 @@ predict_keras<- function(modelNN, predInput, scaleInput=FALSE, col_means_train, 
     if (scaleInput){
       predInputScaled<- scale(predInput[, , drop=FALSE],
                             center=col_means_train, scale=col_stddevs_train)
+      if (!is.null(maskNA)){
+        predInputScaled[]<- lapply(predInputScaled, function(x){
+          x[is.na(x)]<- maskNA
+          x
+        })
+      }
     } else {
       predInputScaled<- predInput
     }
