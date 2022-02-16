@@ -219,7 +219,7 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
 
     ## Explain model
     if (repVi > 0 | variableResponse | DALEXexplainer){
-      explainer<- DALEX::explain(model=modelNN, data=train_data, y=train_labels, predict_function=stats::predict, label="MLP_keras", verbose=FALSE)
+      explainer<- DALEX::explain(model=modelNN, data=validate_data, y=validate_labels, predict_function=stats::predict, label="MLP_keras", verbose=FALSE)
 
       ## Variable importance
       if (repVi > 0){
