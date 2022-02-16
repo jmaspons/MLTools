@@ -199,6 +199,7 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
     modelNN<- NNTools:::train_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels,
                            test_data=test_data, test_labels=test_labels, epochs=epochs, batch_size=batch_size,
                            sample_weight=sample_weight, callbacks=early_stop, verbose=verbose)
+    if (verbose > 1) message("Training done")
 
     if (NNmodel){
       resi$model<- keras::serialize_model(modelNN)
@@ -213,6 +214,8 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
     resi$performance<- NNTools:::performance_keras(modelNN=modelNN, test_data=validate_data, test_labels=validate_labels,
                              batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size),
                              sample_weight=sample_weight.validate, verbose=verbose)
+
+    if (verbose > 1) message("Performance analyses done")
 
     ## Explain model
     if (repVi > 0 | variableResponse | DALEXexplainer){
@@ -231,6 +234,7 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
         resi$explainer<- explainer
       }
     }
+    if (verbose > 1) message("Model analyses done")
 
     ## Predictions
     if (!is.null(predInput)){
@@ -244,6 +248,7 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
                                scaleInput=!scaleDataset, col_means_train=col_means_train, col_stddevs_train=col_stddevs_train,
                                batch_size=batch_sizePred, tempdirRaster=tempdirRaster)
     }
+    if (verbose > 1) message("Prediction done")
 
     return(resi)
   }, future.seed=TRUE, ...)
