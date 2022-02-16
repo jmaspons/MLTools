@@ -10,6 +10,7 @@ crossValRatio<- c(train=0.6, test=0.2, validate=0.2)
 k<- 5
 idVars<- character()
 epochs<- 5
+maskNA<- -999
 replicates<- 2
 repVi<- 3
 summarizePred<- TRUE
@@ -17,9 +18,11 @@ hidden_shape<- 3
 batch_size<- "all"
 scaleDataset<- FALSE
 tempdirRaster<- tempdir()
+dir.create(tempdirRaster, showWarnings=FALSE)
 filenameRasterPred<- paste0(tempdirRaster, "/testMap.grd")
 baseFilenameRasterPred<- paste0(tempdirRaster, "/testMap")
 baseFilenameNN<- paste0(tempdir(), "/testNN")
+nCoresRaster<- 2
 variableResponse<- TRUE
 DALEXexplainer<- TRUE
 NNmodel<- TRUE
@@ -41,14 +44,14 @@ test_that("process_keras works", {
                                                          crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
   system.time(result$resp2summarizedPred<- process_keras(df=df, predInput=predInput, responseVars=1:2,
-                                                         epochs=epochs, repVi=repVi,
+                                                         epochs=epochs, maskNA=maskNA, repVi=repVi,
                                                          crossValStrategy=crossValStrategy[2], replicates=replicates,
                                                          batch_size=batch_size, hidden_shape=hidden_shape,
                                                          baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
                                                          crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
   system.time(result$resp1<- process_keras(df=df, predInput=rev(predInput), responseVars=responseVars,
-                                           epochs=epochs, repVi=repVi,
+                                           epochs=epochs, maskNA=maskNA, repVi=repVi,
                                            crossValStrategy=crossValStrategy[2], replicates=replicates,
                                            hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE,
                                            baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
@@ -144,20 +147,20 @@ test_that("Predict with raster", {
   resultR$resp1summarizedPred<- process_keras(df, predInput=predInputR,
                                               epochs=epochs, repVi=repVi,
                                               crossValStrategy=crossValStrategy[1], k=k,
-                                              batch_size=batch_size, hidden_shape=hidden_shape,
+                                              batch_size=batch_size, hidden_shape=hidden_shape, summarizePred=TRUE,
                                               filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
                                               DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
 
   filenameRasterPred<- paste0(tempdir(), "/testMap2.grd") # avoid overwrite
   resultR$resp1<- process_keras(df, predInput=predInputR[[rev(names(predInputR))]],
-                                epochs=epochs, repVi=repVi,
+                                epochs=epochs, maskNA=maskNA, repVi=repVi,
                                 crossValStrategy=crossValStrategy[2], replicates=replicates,
                                 batch_size=batch_size, hidden_shape=hidden_shape, summarizePred=FALSE,
                                 filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
                                 DALEXexplainer=FALSE, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
 
   filenameRasterPred<- paste0(tempdir(), "/testMap3.grd") # avoid overwrite
-  resultR$resp2summarizedPred<- process_keras(df, predInput=predInputR, responseVars=1:2, epochs=epochs, repVi=repVi,
+  resultR$resp2summarizedPred<- process_keras(df, predInput=predInputR, responseVars=1:2, epochs=epochs, maskNA=maskNA, repVi=repVi,
                         crossValStrategy=crossValStrategy[1], k=k, batch_size=batch_size, hidden_shape=hidden_shape,
                         summarizePred=TRUE, filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
                         DALEXexplainer=FALSE, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
@@ -214,9 +217,11 @@ test_that("Future plans work", {
 
 
 test_that("scaleDataset", {
-  future::plan(future::multiprocess)
+  future::plan(future::multisession)
+  system.time(res<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi,
                                    batch_size=batch_size, scaleDataset=TRUE, hidden_shape=hidden_shape,
                                    baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+  expect_s3_class(res, class="process_NN")
 
   predInputR<- raster::raster(nrows=15, ncols=15)
   predInputR<- raster::stack(lapply(varScale, function(i){
@@ -227,10 +232,11 @@ test_that("scaleDataset", {
   # predInput<- predInputR
 
   filenameRasterPred<- paste0(tempdir(), "/testMapScaleDataset.grd") # avoid overwrite
-  res2R<- process_keras(df, predInput=predInputR, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
+  res<- process_keras(df, predInput=predInputR, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
                         scaleDataset=TRUE,  hidden_shape=hidden_shape,
                         filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
                         DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
+  expect_s3_class(res, class="process_NN")
 })
 
 
