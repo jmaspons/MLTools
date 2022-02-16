@@ -8,7 +8,7 @@ responseVars<- 1
 crossValRatio<- c(train=0.6, test=.2, validate=0.2)
 idVars<- character()
 crossValRatio<- c(train=0.6, test=0.2, validate=0.2)
-k<- 5
+k<- 3
 epochs<- 5
 replicates<- 2
 repVi<- 3

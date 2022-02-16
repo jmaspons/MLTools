@@ -37,28 +37,28 @@ test_that("process_keras works", {
                                                          epochs=epochs, repVi=repVi,
                                                          crossValStrategy=crossValStrategy[1], k=k,
                                                          batch_size=batch_size, hidden_shape=hidden_shape,
-                                                         baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer,
+                                                         baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
                                                          crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
   system.time(result$resp2summarizedPred<- process_keras(df=df, predInput=predInput, responseVars=1:2,
                                                          epochs=epochs, repVi=repVi,
                                                          crossValStrategy=crossValStrategy[2], replicates=replicates,
                                                          batch_size=batch_size, hidden_shape=hidden_shape,
-                                                         baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer,
+                                                         baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
                                                          crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
   system.time(result$resp1<- process_keras(df=df, predInput=rev(predInput), responseVars=responseVars,
                                            epochs=epochs, repVi=repVi,
                                            crossValStrategy=crossValStrategy[2], replicates=replicates,
                                            hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE,
-                                           baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer,
+                                           baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
                                            crossValRatio=crossValRatio[1], NNmodel=NNmodel, verbose=verbose))
 
   system.time(result$resp2<- process_keras(df=df, predInput=rev(predInput), responseVars=1:2,
                                            epochs=epochs, repVi=repVi,
                                            crossValStrategy=crossValStrategy[1], k=k,
                                            hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE,
-                                           baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer,
+                                           baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
                                            crossValRatio=c(train=0.8, test=0.2), NNmodel=NNmodel, verbose=verbose))
 
   tmp<- lapply(result, function(x) expect_s3_class(x, class="process_NN"))
@@ -139,7 +139,7 @@ test_that("Predict with raster", {
   # predInput<- predInputR
 
 
-  future::plan(future::multiprocess)
+  suppressWarnings(future::plan(future::multicore))
   filenameRasterPred<- paste0(tempdir(), "/testMap1.grd") # avoid overwrite
   resultR$resp1summarizedPred<- process_keras(df, predInput=predInputR,
                                               epochs=epochs, repVi=repVi,
@@ -191,27 +191,30 @@ test_that("Future plans work", {
 # Don't import/export python objects to/from code inside future for PSOCK and callR clusters
 # https://cran.r-project.org/web/packages/future/vignettes/future-4-non-exportable-objects.html
 
-  future::plan(future::transparent)
+  suppressWarnings(future::plan(future::transparent))
   system.time(res<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
                                   hidden_shape=hidden_shape, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+  expect_s3_class(res, class="process_NN")
 
   future::plan(future::multicore)
   system.time(res<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
                                   hidden_shape=hidden_shape, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+  expect_s3_class(res, class="process_NN")
 
   future::plan(future.callr::callr(workers=3))
   system.time(res<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
                                   hidden_shape=hidden_shape, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+  expect_s3_class(res, class="process_NN")
 
   future::plan(future::sequential)
   system.time(res<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
                                   hidden_shape=hidden_shape, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
+  expect_s3_class(res, class="process_NN")
 })
 
 
 test_that("scaleDataset", {
   future::plan(future::multiprocess)
-  system.time(res1<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi,
                                    batch_size=batch_size, scaleDataset=TRUE, hidden_shape=hidden_shape,
                                    baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
