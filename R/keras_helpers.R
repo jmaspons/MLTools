@@ -37,32 +37,32 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
                    summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE, variableResponse=FALSE,
                    baseFilenameNN=NULL, filenameRasterPred=NULL, tempdirRaster=NULL, nCoresRaster=parallel::detectCores() %/% 2, verbose=0, ...){
   crossValStrategy<- match.arg(crossValStrategy)
-  if (is.character(responseVars)){
-    responseVars<- which(colnames(df) %in% responseVars)
+  if (is.numeric(responseVars)){
+    responseVars<- colnames(df)[responseVars]
   }
-  if (is.character(idVars)){
-    idVars<- which(colnames(df) %in% idVars)
+  if (is.numeric(idVars)){
+    idVars<- colnames(df)[idVars]
   }
   if (length(caseClass) == 1){
     if (is.numeric(caseClass)){
-      idVars<- c(idVars, caseClass)
+      idVars<- c(idVars, colnames(df)[caseClass])
     } else if (is.character(caseClass)){
-      idVars<- c(idVars, which(colnames(df) %in% caseClass))
+      idVars<- c(idVars, caseClass)
     }
   }
 
-  predVars<- setdiff(1:ncol(df), c(responseVars, idVars))
+  predVars<- setdiff(colnames(df), c(responseVars, idVars))
 
   ## Select and sort predVars in predInput based on var names matching in df
   if (!is.null(predInput)){
     if (inherits(predInput, "Raster") & requireNamespace("raster", quietly=TRUE)){
-      selCols<- intersect(colnames(df)[predVars], names(predInput))
+      selCols<- intersect(predVars, names(predInput))
       predInput<- predInput[[selCols]]
       if (!identical(selCols, names(predInput)))
         stop("Input names for predictions doesn't match input for training. Check variable names.")
     }  else if (inherits(predInput, c("data.frame", "matrix"))) {
-      selCols<- intersect(colnames(df)[predVars], colnames(predInput))
-      idVarsPred<- intersect(colnames(df)[idVars], colnames(predInput))
+      selCols<- intersect(predVars, colnames(predInput))
+      idVarsPred<- intersect(idVars, colnames(predInput))
 
       if (length(idVarsPred) > 0){
         predInputIdVars<- predInput[, idVarsPred, drop=FALSE]
