@@ -4,6 +4,12 @@ varScale<- seq(-100, 100, length.out=4)
 names(varScale)<- paste0("X", 1:length(varScale))
 df<- data.frame(lapply(varScale, function(i) runif(100) * i))
 predInput<- data.frame(lapply(varScale, function(i) runif(50) * i))
+rowNames<- lapply(seq_len(nrow(df) %/% length(letters) + 1), function(x){
+    sapply(letters, function(y) paste(rep(y, each=x), collapse=""))
+  })
+rowNames<- do.call(c, rowNames)
+rownames(df)<- rowNames[1:nrow(df)]
+rownames(predInput)<- rowNames[1:nrow(predInput)]
 responseVars<- 1
 crossValStrategy<- c("Kfold", "bootstrap")
 crossValRatio<- c(train=0.6, test=0.2, validate=0.2)

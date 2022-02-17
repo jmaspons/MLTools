@@ -251,6 +251,7 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
                                batch_size=batch_sizePred, tempdirRaster=tempdirRaster, nCoresRaster=nCoresRaster)
       if (inherits(resi$predictions, "matrix")){
         colnames(resi$predictions)<- responseVars
+        rownames(resi$predictions)<- rownames(predInput)
       } else if (inherits(resi$predictions, "Raster")){
         names(resi$predictions)<- responseVars
       }
@@ -269,133 +270,7 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
 
   if (verbose > 0) message("Iterations finished. Gathering results...")
 
-
-  ## Gather results
-  names(res)<- paste0("rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res))))
-
-  out<- list(performance=do.call(rbind, lapply(res, function(x) x$performance)),
-             scale=lapply(res, function(x) x$scaleVals))
-
-  if (!is.null(res[[1]]$variableImportance)){
-    vi<- lapply(res, function(x){
-            tmp<- x$variableImportance
-            tmp[sort(rownames(tmp)), ]
-          })
-    nPerm<- ncol(vi[[1]])
-    vi<- do.call(cbind, vi)
-
-    out$vi<- vi[order(rowSums(vi)), , drop=FALSE] ## Order by average vi
-    colnames(out$vi)<- paste0(rep(paste0("rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res)))), each=nPerm),
-                              "_", colnames(out$vi))
-  }
-
-  if (!is.null(res[[1]]$variableResponse)){
-    out$variableResponse<- lapply(res, function(x){
-      x$variableResponse$variableResponse
-    })
-
-    variableCoef<- lapply(res, function(x){
-      x$variableResponse$var_coef
-    })
-
-    out$variableCoef<- lapply(rownames(variableCoef[[1]]), function(x){
-      varCoef<- lapply(variableCoef, function(y){
-        stats::na.omit(y[x, ])
-      })
-
-      degrees<- sapply(varCoef, function(y) y["degree"])
-      maxDegree<- max(degrees)
-
-      if (length(unique(degrees)) > 1){
-        # Add NA if varCoef elements have degree < maxDegree (different length)
-        sel<- degrees < maxDegree
-        varCoef[sel]<- lapply(varCoef[sel], function(x){
-                  c(x[1:(1 + x["degree"])], rep(NA_real_, maxDegree - x["degree"]), x[c("adj.r.squared", "r.squared", "degree")])
-                })
-      }
-
-      structure(do.call(rbind, varCoef),
-                dimnames=list(names(varCoef), ## TODO: check translation response var from ingredients::partial_dependency()$`_label_`
-                              c("intercept", paste0("b", 1:(maxDegree)), "adj.r.squared", "r.squared", "degree")))
-    })
-    names(out$variableCoef)<- rownames(variableCoef[[1]])
-  }
-
-  ## Predictions
-  if (!is.null(res[[1]]$predictions)){
-    out$predictions<- lapply(res, function(x) x$predictions)
-
-    if (inherits(res[[1]]$predictions, "Raster")){
-      resVarNames<- names(out$predictions[[1]])
-      out$predictions<- raster::stack(out$predictions)
-      lnames<- paste0(rep(resVarNames, times=length(res)),
-                      rep(paste0("_rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res)))),
-                          each=length(resVarNames)))
-      names(out$predictions)<- lnames
-
-      if (!is.null(filenameRasterPred)){
-        if (summarizePred){
-          out$predictions<- summarize_pred(pred=out$predictions, filename=filenameRasterPred, nCoresRaster=nCoresRaster)
-        } else {
-          out$predictions<- raster::brick(out$predictions, filename=filenameRasterPred)
-        }
-      } else {
-        if (summarizePred){
-          out$predictions<- summarize_pred(pred=out$predictions, nCoresRaster=nCoresRaster)
-        } else {
-          out$predictions<- raster::brick(out$predictions)
-        }
-
-        if (!raster::inMemory(out$predictions)){
-          warning("The rasters with the predictions doesn't fit in memory and the values are saved in a temporal file. ",
-                  "Please, provide the filenameRasterPred parameter to save the raster in a non temporal file. ",
-                  "If you want to save the predictions of the current run use writeRaster on result$predicts before to close the session.")
-        }
-      }
-
-      tmpFiles<- sapply(res, function(x){
-          raster::filename(x$predictions)
-        })
-      tmpFiles<- tmpFiles[tmpFiles != ""]
-
-      file.remove(tmpFiles, gsub("\\.grd", ".gri", tmpFiles))
-
-    } else { ## non Raster predInput
-      resVarNames<- colnames(out$predictions[[1]])
-      out$predictions<- lapply(resVarNames, function(x){
-                          do.call(cbind, lapply(out$predictions, function(y) y[, x, drop=FALSE]))
-                        })
-      names(out$predictions)<- resVarNames
-
-      if (summarizePred){
-        out$predictions<- lapply(out$predictions, function(x){
-                            rownames(x)<- rownames(predInput)
-                            summarize_pred.default(x)
-                          })
-      }else{
-        out$predictions<- lapply(out$predictions, function(x){
-                              rownames(x)<- rownames(predInput)
-                              colnames(x)<- paste0("rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res))))
-                              x
-                           })
-      }
-
-    }
-
-  }
-
-
-  if (!is.null(res[[1]]$model)){
-    out$model<- lapply(res, function(x){
-      x$model # unserialize_model() to use the saved model
-    })
-  }
-
-  if (!is.null(res[[1]]$explainer)){
-    out$DALEXexplainer<- lapply(res, function(x){
-      x$explainer
-    })
-  }
+  out<- gatherResults.process_NN(res=res, summarizePred=summarizePred, filenameRasterPred=filenameRasterPred, nCoresRaster=nCoresRaster)
 
   if (!is.null(predInput) & inherits(predInput, c("data.frame", "matrix")) & length(idVarsPred) > 0){
     ## Add idVars if exists
@@ -504,6 +379,137 @@ variableResponse_keras<- function(explainer, variables=NULL, maxPoly=5){
               )
 
   return(list(var_coefs=var_coefs, variableResponse=varResp))
+}
+
+
+gatherResults.process_NN<- function(res, summarizePred, filenameRasterPred, nCoresRaster){
+  names(res)<- paste0("rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res))))
+
+  out<- list(performance=do.call(rbind, lapply(res, function(x) x$performance)),
+             scale=lapply(res, function(x) x$scaleVals))
+
+  if (!is.null(res[[1]]$variableImportance)){
+    vi<- lapply(res, function(x){
+            tmp<- x$variableImportance
+            tmp[sort(rownames(tmp)), ]
+          })
+    nPerm<- ncol(vi[[1]])
+    vi<- do.call(cbind, vi)
+
+    out$vi<- vi[order(rowSums(vi)), , drop=FALSE] ## Order by average vi
+    colnames(out$vi)<- paste0(rep(paste0("rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res)))), each=nPerm),
+                              "_", colnames(out$vi))
+  }
+
+  if (!is.null(res[[1]]$variableResponse)){
+    out$variableResponse<- lapply(res, function(x){
+      x$variableResponse$variableResponse
+    })
+
+    variableCoef<- lapply(res, function(x){
+      x$variableResponse$var_coef
+    })
+
+    out$variableCoef<- lapply(rownames(variableCoef[[1]]), function(x){
+      varCoef<- lapply(variableCoef, function(y){
+        stats::na.omit(y[x, ])
+      })
+
+      degrees<- sapply(varCoef, function(y) y["degree"])
+      maxDegree<- max(degrees)
+
+      if (length(unique(degrees)) > 1){
+        # Add NA if varCoef elements have degree < maxDegree (different length)
+        sel<- degrees < maxDegree
+        varCoef[sel]<- lapply(varCoef[sel], function(x){
+                  c(x[1:(1 + x["degree"])], rep(NA_real_, maxDegree - x["degree"]), x[c("adj.r.squared", "r.squared", "degree")])
+                })
+      }
+
+      structure(do.call(rbind, varCoef),
+                dimnames=list(names(varCoef), ## TODO: check translation response var from ingredients::partial_dependency()$`_label_`
+                              c("intercept", paste0("b", 1:(maxDegree)), "adj.r.squared", "r.squared", "degree")))
+    })
+    names(out$variableCoef)<- rownames(variableCoef[[1]])
+  }
+
+  ## Predictions
+  if (!is.null(res[[1]]$predictions)){
+    out$predictions<- lapply(res, function(x) x$predictions)
+
+    if (inherits(res[[1]]$predictions, "Raster")){
+      resVarNames<- names(out$predictions[[1]])
+      out$predictions<- raster::stack(out$predictions)
+      lnames<- paste0(rep(resVarNames, times=length(res)),
+                      rep(paste0("_rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res)))),
+                          each=length(resVarNames)))
+      names(out$predictions)<- lnames
+
+      if (!is.null(filenameRasterPred)){
+        if (summarizePred){
+          out$predictions<- summarize_pred(pred=out$predictions, filename=filenameRasterPred, nCoresRaster=nCoresRaster)
+        } else {
+          out$predictions<- raster::brick(out$predictions, filename=filenameRasterPred)
+        }
+      } else {
+        if (summarizePred){
+          out$predictions<- summarize_pred(pred=out$predictions, nCoresRaster=nCoresRaster)
+        } else {
+          out$predictions<- raster::brick(out$predictions)
+        }
+
+        if (!raster::inMemory(out$predictions)){
+          warning("The rasters with the predictions doesn't fit in memory and the values are saved in a temporal file. ",
+                  "Please, provide the filenameRasterPred parameter to save the raster in a non temporal file. ",
+                  "If you want to save the predictions of the current run use writeRaster on result$predicts before to close the session.")
+        }
+      }
+
+      tmpFiles<- sapply(res, function(x){
+          raster::filename(x$predictions)
+        })
+      tmpFiles<- tmpFiles[tmpFiles != ""]
+
+      file.remove(tmpFiles, gsub("\\.grd", ".gri", tmpFiles))
+
+    } else { ## non Raster predInput
+      resVarNames<- colnames(out$predictions[[1]])
+      out$predictions<- lapply(resVarNames, function(x){
+                          do.call(cbind, lapply(out$predictions, function(y) y[, x, drop=FALSE]))
+                        })
+      names(out$predictions)<- resVarNames
+
+      if (summarizePred){
+        out$predictions<- lapply(out$predictions, function(x){
+                            summarize_pred.default(x)
+                          })
+      }else{
+        out$predictions<- lapply(out$predictions, function(x){
+                            colnames(x)<- paste0("rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res))))
+                            x
+                          })
+      }
+
+    }
+
+  }
+
+
+  if (!is.null(res[[1]]$model)){
+    out$model<- lapply(res, function(x){
+      x$model # unserialize_model() to use the saved model
+    })
+  }
+
+  if (!is.null(res[[1]]$explainer)){
+    out$DALEXexplainer<- lapply(res, function(x){
+      x$explainer
+    })
+  }
+
+  class(out)<- "process_NN"
+
+  return(out)
 }
 
 
