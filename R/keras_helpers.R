@@ -54,6 +54,7 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
   predVars<- setdiff(colnames(df), c(responseVars, idVars))
 
   ## Select and sort predVars in predInput based on var names matching in df
+  idVarsPred<- NULL
   if (!is.null(predInput)){
     if (inherits(predInput, "Raster") & requireNamespace("raster", quietly=TRUE)){
       selCols<- intersect(predVars, names(predInput))
@@ -84,7 +85,7 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
     rm(df.scaled)
 
     if (!is.null(maskNA)){
-      df[, predVars]<- lapply(df[, predVars, drop=FALSE], function(x){
+      df[, predVars]<- apply(df[, predVars, drop=FALSE], 2, function(x){
         x[is.na(x)]<- maskNA
         x
       })
@@ -108,14 +109,14 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
         if (!is.null(maskNA)){
           predInput<- raster::clusterR(predInput, function(x, maskNA){
                                 raster::calc(x, fun=function(y) { y[is.na(y)]<- maskNA; y } )
-                              }, args=list(maskNA=maskNA), filename=filenameScaled)
+                              }, args=list(maskNA=maskNA), filename=filenameScaled, overwrite=TRUE)
         }
         raster::endCluster()
 
       }  else if (inherits(predInput, c("data.frame", "matrix"))) {
         predInput<- scale(predInput[, , drop=FALSE], center=col_means_train, scale=col_stddevs_train)
         if (!is.null(maskNA)){
-          predInput[]<- lapply(predInput, function(x){
+          predInput<- apply(predInput, 2, function(x){
             x[is.na(x)]<- maskNA
             x
           })
@@ -168,6 +169,7 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
       col_stddevs_train<- attr(train_data, "scaled:scale")
 
       test_data<- scale(test_data, center=col_means_train, scale=col_stddevs_train)
+      validate_data<- scale(validate_data, center=col_means_train, scale=col_stddevs_train)
 
       if (!is.null(maskNA)){
         train_data<- apply(train_data, 2, function(x){
@@ -190,7 +192,7 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
     ## TODO: check if reset_state is faster and equivalent to build_model. Not possible to reuse model among replicates
     ## WARNING: Don't import/export NNmodel nor python objects to code inside future for PSOCK clusters, callR.
     # https://cran.r-project.org/web/packages/future/vignettes/future-4-non-exportable-objects.html
-    modelNN<- NNTools:::build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars), hidden_shape=hidden_shape)
+    modelNN<- NNTools:::build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars), hidden_shape=hidden_shape, mask=maskNA)
     # modelNN<- keras::reset_states(modelNN)
 
     ## Check convergence on the max epochs frame
@@ -227,7 +229,7 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
       }
       ## Variable response
       if (variableResponse){
-        resi$variableResponse<- variableResponse_keras(explainer)
+        resi$variableResponse<- NNTools:::variableResponse_keras(explainer)
       }
 
       if (DALEXexplainer){
@@ -246,12 +248,24 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
 
       resi$predictions<- NNTools:::predict_keras(modelNN=modelNN, predInput=predInput, maskNA=maskNA,
                                scaleInput=!scaleDataset, col_means_train=col_means_train, col_stddevs_train=col_stddevs_train,
-                               batch_size=batch_sizePred, tempdirRaster=tempdirRaster)
+                               batch_size=batch_sizePred, tempdirRaster=tempdirRaster, nCoresRaster=nCoresRaster)
+      if (inherits(resi$predictions, "matrix")){
+        colnames(resi$predictions)<- responseVars
+      } else if (inherits(resi$predictions, "Raster")){
+        names(resi$predictions)<- responseVars
+      }
     }
     if (verbose > 1) message("Prediction done")
 
     return(resi)
   }, future.seed=TRUE, ...)
+
+  if (scaleDataset){
+    res[[1]]$scaleVals<- list(dataset=data.frame(mean=col_means_train, sd=col_stddevs_train))
+    if (inherits(predInput, "Raster")){
+      file.remove(filenameScaled, gsub("\\.grd$", ".gri", filenameScaled))
+    }
+  }
 
   if (verbose > 0) message("Iterations finished. Gathering results...")
 
@@ -259,16 +273,10 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
   ## Gather results
   names(res)<- paste0("rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res))))
 
-  out<- list(performance=do.call(rbind, lapply(res, function(x) x$performance)))
+  out<- list(performance=do.call(rbind, lapply(res, function(x) x$performance)),
+             scale=lapply(res, function(x) x$scaleVals))
 
-  if (scaleDataset){
-    out<- c(out, list(scale=list(dataset=data.frame(mean=col_means_train, sd=col_stddevs_train))))
-  } else {
-    out<- c(out, list(scale=lapply(res, function(x) x$scaleVals)))
-  }
-
-
-  if (repVi > 0){
+  if (!is.null(res[[1]]$variableImportance)){
     vi<- lapply(res, function(x){
             tmp<- x$variableImportance
             tmp[sort(rownames(tmp)), ]
@@ -281,7 +289,7 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
                               "_", colnames(out$vi))
   }
 
-  if (variableResponse){
+  if (!is.null(res[[1]]$variableResponse)){
     out$variableResponse<- lapply(res, function(x){
       x$variableResponse$variableResponse
     })
@@ -314,18 +322,15 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
   }
 
   ## Predictions
-  if (!is.null(predInput)){
+  if (!is.null(res[[1]]$predictions)){
     out$predictions<- lapply(res, function(x) x$predictions)
 
-    if (inherits(predInput, "Raster")){
-
-      if (scaleDataset) file.remove(filenameScaled, gsub("\\.grd$", ".gri", filenameScaled))
-
+    if (inherits(res[[1]]$predictions, "Raster")){
+      resVarNames<- names(out$predictions[[1]])
       out$predictions<- raster::stack(out$predictions)
-
-      lnames<- paste0(rep(colnames(df)[responseVars], times=length(res)),
+      lnames<- paste0(rep(resVarNames, times=length(res)),
                       rep(paste0("_rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res)))),
-                          each=length(responseVars)))
+                          each=length(resVarNames)))
       names(out$predictions)<- lnames
 
       if (!is.null(filenameRasterPred)){
@@ -356,16 +361,16 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
       file.remove(tmpFiles, gsub("\\.grd", ".gri", tmpFiles))
 
     } else { ## non Raster predInput
-
-      out$predictions<- lapply(seq_along(responseVars), function(x){
+      resVarNames<- colnames(out$predictions[[1]])
+      out$predictions<- lapply(resVarNames, function(x){
                           do.call(cbind, lapply(out$predictions, function(y) y[, x, drop=FALSE]))
                         })
-      names(out$predictions)<- colnames(df)[responseVars]
+      names(out$predictions)<- resVarNames
 
       if (summarizePred){
         out$predictions<- lapply(out$predictions, function(x){
                             rownames(x)<- rownames(predInput)
-                            summarize_pred(x)
+                            summarize_pred.default(x)
                           })
       }else{
         out$predictions<- lapply(out$predictions, function(x){
@@ -375,34 +380,34 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
                            })
       }
 
-      if (length(idVarsPred) > 0){
-        ## Add idVars if exists
-        out$predictions<- lapply(out$predictions, function(x){
-                            cbind(predInputIdVars, x)
-                          })
-      }
-
     }
 
   }
 
 
-  if (NNmodel){
+  if (!is.null(res[[1]]$model)){
     out$model<- lapply(res, function(x){
       x$model # unserialize_model() to use the saved model
     })
-
-    if (!is.null(baseFilenameNN)){
-      tmp<- lapply(seq_along(out$model), function(i){
-        save_model_hdf5(keras::unserialize_model(out$model[[i]]), filepath=paste0(baseFilenameNN, "_", formatC(i, format="d", flag="0", width=nchar(length(res))), ".hdf5"),
-                        overwrite=TRUE, include_optimizer=TRUE)
-      })
-    }
   }
 
-  if (DALEXexplainer){
+  if (!is.null(res[[1]]$explainer)){
     out$DALEXexplainer<- lapply(res, function(x){
       x$explainer
+    })
+  }
+
+  if (!is.null(predInput) & inherits(predInput, c("data.frame", "matrix")) & length(idVarsPred) > 0){
+    ## Add idVars if exists
+    out$predictions<- lapply(out$predictions, function(x){
+      cbind(predInputIdVars, x)
+    })
+  }
+
+  if (!is.null(baseFilenameNN) & !is.null(res[[1]]$model)){
+    tmp<- lapply(seq_along(out$model), function(i){
+      save_model_hdf5(keras::unserialize_model(out$model[[i]]), filepath=paste0(baseFilenameNN, "_", formatC(i, format="d", flag="0", width=nchar(length(res))), ".hdf5"),
+                      overwrite=TRUE, include_optimizer=TRUE)
     })
   }
 
@@ -597,7 +602,7 @@ predict.Raster_keras<- function(object, model, filename="", fun=predict, ...) {
 #' @return
 #'
 #' @examples
-predict_keras<- function(modelNN, predInput, maskNA=NULL, scaleInput=FALSE, col_means_train, col_stddevs_train, batch_size, filename="", tempdirRaster=NULL){
+predict_keras<- function(modelNN, predInput, maskNA=NULL, scaleInput=FALSE, col_means_train, col_stddevs_train, batch_size, filename="", tempdirRaster=NULL, nCoresRaster=2){
   if (inherits(predInput, "Raster") & requireNamespace("raster", quietly=TRUE)){
     if (!is.null(tempdirRaster)){
       filenameScaled<- tempfile(tmpdir=tempdirRaster, fileext=".grd")
@@ -610,13 +615,17 @@ predict_keras<- function(modelNN, predInput, maskNA=NULL, scaleInput=FALSE, col_
 
     if (scaleInput){
       # predInputScaled<- raster::scale(predInput, center=col_means_train, scale=col_stddevs_train)
-      predInputScaled<- raster::calc(predInput, filename=filenameScaled,
-                                  fun=function(x) scale(x, center=col_means_train, scale=col_stddevs_train))
+      raster::beginCluster(n=nCoresRaster)
+      predInputScaled<- raster::clusterR(predInput, function(x, col_means_train, col_stddevs_train){
+                                    raster::calc(x, fun=function(y) scale(y, center=col_means_train, scale=col_stddevs_train))
+                                  }, args=list(col_means_train=col_means_train, col_stddevs_train=col_stddevs_train), filename=filenameScaled)
       if (!is.null(maskNA)){
-        predInputScaled<- raster::clusterR(predInput, function(x, maskNA){
-                                    raster::calc(x, fun=function(y) { y[is.na(y)]<- maskNA; y } )
-                                  }, args=list(maskNA=maskNA), filename=filenameScaled)
+        predInputScaled<- raster::clusterR(predInputScaled, function(x, maskNA){
+                                      raster::calc(x, fun=function(y) { y[is.na(y)]<- maskNA; y } )
+                                    }, args=list(maskNA=maskNA), filename=filenameScaled, overwrite=TRUE) # gsub(".grd$", "_mask.grd", filenameScaled)
       }
+      raster::endCluster()
+      names(predInputScaled)<- names(predInput)
       # ?keras::predict.keras.engine.training.Model
       # ?raster::`predict,Raster-method`
     } else {
@@ -643,7 +652,7 @@ predict_keras<- function(modelNN, predInput, maskNA=NULL, scaleInput=FALSE, col_
       predInputScaled<- scale(predInput[, , drop=FALSE],
                             center=col_means_train, scale=col_stddevs_train)
       if (!is.null(maskNA)){
-        predInputScaled[]<- lapply(predInputScaled, function(x){
+        predInputScaled<- apply(predInputScaled, 2, function(x){
           x[is.na(x)]<- maskNA
           x
         })
