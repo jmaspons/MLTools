@@ -293,8 +293,9 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
 
 
 train_keras<- function(modelNN, train_data, train_labels, test_data, test_labels, epochs, batch_size, sample_weight=NULL, callbacks=NULL, verbose=0){
-  if (is.null(sample_weight)){
+  if (is.null(sample_weight) | length(sample_weight) == 0){
     validation_data<- list(test_data, test_labels)
+    sample_weight<- NULL
   } else {
     validation_data<- list(test_data, test_labels, sample_weight$weight.test)
     sample_weight<- sample_weight$weight.train
@@ -537,6 +538,26 @@ build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128, mask=NU
   model
 }
 
+build_modelLTSM<- function(input_shape, output_shape=1, hidden_shape=128, mask){
+  if (is.null(mask)){
+    model<- keras_model_sequential() %>%
+      layer_lstm(units=hidden_shape, activation="relu", input_shape=input_shape) %>%
+      layer_dense(units=output_shape)
+  } else {
+    model<- keras_model_sequential() %>%
+      layer_masking(mask_value=mask, input_shape=input_shape) %>%
+      layer_lstm(units=hidden_shape, activation="relu") %>%
+      layer_dense(units=output_shape)
+  }
+
+  compile(model,
+          loss="mse",
+          optimizer=optimizer_rmsprop(),
+          metrics=list("mean_squared_error", "mean_absolute_error", "mean_absolute_percentage_error")
+  )
+
+  model
+}
 
 # https://github.com/rspatial/raster/blob/b1c9d91b1b43b17ea757889dc93f97bd70dc1d2e/R/predict.R
 # ?raster::`predict,Raster-method`
@@ -667,8 +688,9 @@ predict_keras<- function(modelNN, predInput, maskNA=NULL, scaleInput=FALSE, col_
       predInputScaled<- predInput
     }
 
-    predicts<- stats::predict(modelNN, predInputScaled,
-                              batch_size=batch_size) # TODO, verbose=verbose)
+    predicts<- stats::predict(modelNN, predInputScaled, batch_size=batch_size) # TODO, verbose=verbose)
+  } else {
+    predicts<- stats::predict(modelNN, predInput, batch_size=batch_size) # TODO, verbose=verbose)
   }
 
   return(predicts)
