@@ -328,9 +328,9 @@ performance_keras<- function(modelNN, test_data, test_labels, batch_size, sample
 
 # @importFrom DALEX explain
 # @importFrom ingredients feature_importance
-variableImportance_keras<- function(explainer, repVi=5){
+variableImportance_keras<- function(explainer, repVi=5, permDim=2){
   if (repVi > 0){
-    vi<- ingredients::feature_importance(explainer, B=repVi)
+    vi<- ingredients::feature_importance(explainer, B=repVi, permDim=permDim)
     vi<- stats::reshape(as.data.frame(vi)[, c("variable", "dropout_loss", "permutation")], timevar="permutation", idvar="variable", direction="wide")
     vi<- structure(as.matrix(vi[, -1]),
                    dimnames=list(as.character(vi$variable),

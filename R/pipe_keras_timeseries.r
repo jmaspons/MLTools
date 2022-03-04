@@ -11,6 +11,8 @@
 #' @param responseTime a \code{timevar} value used as a response var for \code{responseVars} or the default "LAST" for the last timestep available (\code{max(df[, timevar])}).
 #' @param regex_time regular expression matching the \code{timevar} values format.
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid report variable importance
+#' @param permDim dimension to perform the permutations to calculate the importance of the variables (data dimensions [case, time, variable]).
+#' If \code{permDim = 2:3}, it calculates the importance for each combination of the 2nd and 3rd dimensions.
 #' @param crossValStrategy \code{Kfold} or \code{bootstrap}.
 #' @param replicates number of replicates when \code{crossValStrategy="bootstrap"}.
 #' @param k number of data partitions when \code{crossValStrategy="Kfold"}.
@@ -36,12 +38,11 @@
 #' @importFrom stats predict
 #' @examples
 pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars=character(), weight="class",
-                   modelType=c("DNN", "LSTM"), timevar=NULL, responseTime="LAST", regex_time=".+", staticVars=NULL,
-                   repVi=5, crossValStrategy=c("Kfold", "bootstrap"), k=5, replicates=10, crossValRatio=c(train=0.6, test=0.2, validate=0.2),
+                   timevar=NULL, responseTime="LAST", regex_time=".+", staticVars=NULL,
+                   repVi=5, permDim=2:3, crossValStrategy=c("Kfold", "bootstrap"), k=5, replicates=10, crossValRatio=c(train=0.6, test=0.2, validate=0.2),
                    hidden_shape=50, epochs=500, maskNA=NULL, batch_size="all",
                    summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE, variableResponse=FALSE,
                    baseFilenameNN=NULL, filenameRasterPred=NULL, tempdirRaster=NULL, nCoresRaster=parallel::detectCores() %/% 2, verbose=0, ...){
-  modelType<- match.arg(modelType)
   crossValStrategy<- match.arg(crossValStrategy)
   if (is.numeric(responseVars)){
     responseVars<- colnames(df)[responseVars]
@@ -66,27 +67,16 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
   idVarsPred<- NULL
   if (!is.null(predInput)){
     if (inherits(predInput, "Raster") & requireNamespace("raster", quietly=TRUE)){
+      ## TODO: raster predictions not implemented yet
       selCols<- intersect(predVars, names(predInput))
       predInput<- predInput[[selCols]]
       if (!identical(selCols, names(predInput)))
         stop("Input names for predictions doesn't match input for training. Check variable names.")
-    }  else if (inherits(predInput, c("data.frame", "matrix"))) {
-      selCols<- intersect(predVars, colnames(predInput))
-      idVarsPred<- intersect(idVars, colnames(predInput))
-
-      if (length(idVarsPred) > 0){
-        predInputIdVars<- predInput[, idVarsPred, drop=FALSE]
-      }
-
-      predInput<- predInput[, selCols]
-
-      if (!identical(selCols, colnames(predInput)))
-        stop("Input names for predictions doesn't match input for training. Check variable names.")
     }
-
   }
 
   if (scaleDataset){
+    ## WARNING: responseVars also scaled ----
     df.scaled<- scale(df[, predVars, drop=FALSE])
     df[, predVars]<- df.scaled
     col_means_train<- attr(df.scaled, "scaled:center")
@@ -139,7 +129,6 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
   # scaling must be done on long format data
   ## NEEDS a refactor :_( or changing data formats twice or map cases from wide to long
   ## TODO: QUESTION: How to build de 3Darray? Discard responseTime VS responseTime for responseVars <- NA VS irregular shape coder/encoder layer ----
-  # if (modelType == "LSTM"){
   responseVars.ts<- paste0(responseVars, "_", responseTime)
   predVars.tf<- paste0(setdiff(predVars, staticVars), "_", responseTime)
   df.long<- df
@@ -147,8 +136,6 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
   # vars<- colnames(df.long[, predVars])
   predVars.ts<- setdiff(colnames(df.wide), c(idVars, staticVars)) # WARNING: Includes responseVars.ts
   timevals<- unique(df[[timevar]])
-
-  # }
 
 
   idxSetsL<- switch(crossValStrategy,
@@ -178,7 +165,6 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
 
     if (!scaleDataset){
       # NOTE: if *_data are matrix, wideToLong.ts transform timevar to character, all columns become characters.
-      # Use data.frames with unique idVars cases will be aggregated when wideToLong.ts ----
       trainset.long<- wideToLong.ts(d=crossValSets$trainset, timevar=timevar, vars=setdiff(predVars, c(idVars, staticVars)), idCols=c(idVars, staticVars), regex_time=regex_time)
       trainset.longScaled<- scale(trainset.long[, predVars])
       trainset.long[, predVars]<- trainset.longScaled
@@ -193,8 +179,6 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
       matchVars<- rbind(matchVars, data.frame(predVars=staticVars, predVars.ts=staticVars))
       matchVars<- merge(data.frame(predVars=names(col_means_train), col_means_train=col_means_train, col_stddevs_train=col_stddevs_train),
                         matchVars, by="predVars")
-      # rownames(matchVars)<- matchVars$predVars.ts
-      # matchVars<- na.omit(matchVars)
       crossValSets$testset[, matchVars$predVars.ts]<- scale(crossValSets$testset[, matchVars$predVars.ts],
                                                             center=matchVars[, "col_means_train"],
                                                             scale=matchVars[, "col_stddevs_train"])
@@ -261,7 +245,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
     test_data.3d<- wideTo3Darray.ts(d=test_data, vars=setdiff(predVars, staticVars), idCols=idVars)
     validate_data.3d<- wideTo3Darray.ts(d=validate_data, vars=setdiff(predVars, staticVars), idCols=idVars)
 
-    ## TODO decide if responseVars.ts<- NA or remove predVars.tf ----
+    ## TODO: decide if responseVars.ts<- NA or remove predVars.tf ----
     if (is.null(maskNA)){
       train_data.3d<- train_data.3d[, setdiff(dimnames(train_data.3d)[[2]], responseTime), ]
     } else {
@@ -278,13 +262,6 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
 
     ## Check convergence on the max epochs frame
     early_stop<- keras::callback_early_stopping(monitor="val_loss", patience=30)
-
-    # dim(train_data.3d)
-    # dim(train_labels[, responseVars.ts, drop=FALSE])
-    # dim(trainset.long)
-    # dim(train_data)
-    # dimnames(train_data.3d)
-    # dimnames(train_labels[, responseVars.ts, drop=FALSE])
 
     ## NOTE: all data must be matrix or array or a list of if the model has multiple inputs
     modelNN<- NNTools:::train_keras(modelNN=modelNN, train_data=train_data.3d, train_labels=as.matrix(train_labels[, responseVars.ts, drop=FALSE]),
@@ -316,11 +293,12 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
 
       ## Variable importance
       if (repVi > 0){
-        resi$variableImportance<- NNTools:::variableImportance_keras(explainer=explainer, repVi=repVi)
+        resi$variableImportance<- NNTools:::variableImportance_keras(explainer=explainer, repVi=repVi, permDim=permDim)
       }
       ## Variable response
       if (variableResponse){
-        resi$variableResponse<- variableResponse_keras(explainer)
+        warning("variableResponse not implemented for 3d arrays yet. TODO: fix ingredients::partial_dependence")
+        # resi$variableResponse<- variableResponse_keras(explainer)
       }
 
       if (DALEXexplainer){
