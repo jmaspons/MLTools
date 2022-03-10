@@ -1,6 +1,6 @@
 Package: NNTools
 Title: What the Package Does (one line, title case)
-Version: 0.0.3
+Version: 0.0.4
 Authors@R: c(person("Joan", "Maspons", email="j.maspons@creaf.uab.cat", role=c("aut", "cre"), comment=c(ORCID="0000-0003-2286-8727")),
              person("Helena", "Vallicrosa", email="h.vallicrosa@creaf.uab.cat", role=c("ctb")))
 Description: What the package does (one paragraph).
@@ -9,6 +9,7 @@ Depends:
 Imports:
     caret,
     coda,
+    data.table (>= 1.14.3),
     DALEX,
     future,
     future.apply,
