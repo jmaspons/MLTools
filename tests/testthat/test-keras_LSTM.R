@@ -3,6 +3,8 @@ context("LSTM_keras")
 tensorflow::tf$get_logger()$setLevel("ERROR")
 
 df<- data.frame(id=rep(LETTERS[1:10], each=5), static=rep(1:10, each=5), time=rep(1:5, times=5))
+df.cat<- data.frame(id=LETTERS[1:10], cat1=rep(LETTERS[1:5], times=2), cat2=letters[1:10])
+df<- merge(df, df.cat)
 df$x1<- df$time * df$static
 df$x2<- rnorm(nrow(df), mean=df$time * df$static + 100, sd=5)
 df$x3<- rnorm(nrow(df), mean=df$time * df$static * 3, sd=2)
@@ -11,7 +13,7 @@ df$y<- rnorm(nrow(df), mean=(df$x1 + df$x2) / df$x3, sd=2)
 timevar<- "time"
 idVars<- "id"
 responseVars<- "y"
-staticVars<- "static"
+staticVars<- c("static", "cat1", "cat2")
 predTemp<- c("x1", "x2", "x3")
 predInput<- df
 
@@ -34,7 +36,7 @@ k<- 3
 replicates<- 5
 crossValRatio<- c(train=0.6, test=0.2, validate=0.2);
 hidden_shape<- 50
-epochs<- 500
+epochs<- 5
 maskNA<- -999
 batch_size<- 1000
 summarizePred<- TRUE

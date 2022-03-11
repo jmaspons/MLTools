@@ -62,23 +62,44 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
   }
 
   predVars<- setdiff(colnames(df), c(idVars, timevar))
+  predVars.cat<- names(which(!sapply(df[, predVars, drop=FALSE], is.numeric)))
+  predVars.num<- setdiff(predVars, predVars.cat)
+
+  if (length(predVars.cat) > 0){
+    df.catBin<- stats::model.matrix(stats::as.formula(paste("~ -1 +", paste(predVars.cat, collapse="+"))), data=df)
+    predVars.catBin<- colnames(df.catBin)
+    df<- cbind(df[, setdiff(colnames(df), predVars.cat)], df.catBin)
+    predVars<- c(predVars.num, predVars.catBin)
+    staticVars.cat<- staticVars[staticVars %in% predVars.cat]
+    if (all(predVars.cat %in% staticVars.cat)){
+      staticVars<- c(setdiff(staticVars, staticVars.cat), predVars.catBin)
+    } else {
+      warning("Time varying categorical variables not supported yet.")
+      staticVars<- c(setdiff(staticVars, staticVars.cat), predVars.catBin)
+    }
+  }
 
   ## Select and sort predVars in predInput based on var names matching in df
   idVarsPred<- NULL
   if (!is.null(predInput)){
     if (inherits(predInput, "Raster") & requireNamespace("raster", quietly=TRUE)){
-      ## TODO: raster predictions not implemented yet
+      ## TODO: raster predictions not implemented yet. Categorical vars
       selCols<- intersect(predVars, names(predInput))
       predInput<- predInput[[selCols]]
       if (!identical(selCols, names(predInput)))
         stop("Input names for predictions doesn't match input for training. Check variable names.")
+    } else if (inherits(predInput, c("data.frame", "matrix"))){
+      if (length(predVars.cat) > 0){
+        predInput.catBin<- stats::model.matrix(stats::as.formula(paste("~ -1 +", paste(predVars.cat, collapse="+"))), data=predInput)
+        predInput<- cbind(predInput[, setdiff(colnames(predInput), predVars.cat)], predInput.catBin)
+      }
     }
   }
 
   if (scaleDataset){
     ## WARNING: responseVars also scaled ----
-    df.scaled<- scale(df[, predVars, drop=FALSE])
-    df[, predVars]<- df.scaled
+    df.scaled<- scale(df[, predVars.num, drop=FALSE])
+    df[, predVars.num]<- df.scaled
     col_means_train<- attr(df.scaled, "scaled:center")
     col_stddevs_train<- attr(df.scaled, "scaled:scale")
     rm(df.scaled)
@@ -102,7 +123,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
         # predInputScaled<- raster::scale(predInput, center=col_means_train, scale=col_stddevs_train)
         # predInputScaled<- raster::calc(predInput, filename=filenameScaled, fun=function(x) scale(x, center=col_means_train, scale=col_stddevs_train))
         raster::beginCluster(n=nCoresRaster)
-        predInput<- raster::clusterR(predInput, function(x, col_means_train, col_stddevs_train){
+        predInput[[predVars.num]]<- raster::clusterR(predInput[[predVars.num]], function(x, col_means_train, col_stddevs_train){
                               raster::calc(x, fun=function(y) scale(y, center=col_means_train, scale=col_stddevs_train))
                             }, args=list(col_means_train=col_means_train, col_stddevs_train=col_stddevs_train), filename=filenameScaled)
         if (!is.null(maskNA)){
@@ -113,7 +134,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
         raster::endCluster()
 
       }  else if (inherits(predInput, c("data.frame", "matrix"))) {
-        predInput[, predVars]<- scale(predInput[, predVars, drop=FALSE], center=col_means_train, scale=col_stddevs_train)
+        predInput[, names(col_means_train)]<- scale(predInput[, names(col_means_train), drop=FALSE], center=col_means_train, scale=col_stddevs_train)
         if (!is.null(maskNA)){
           predInput[, predVars]<- apply(predInput[, predVars, drop=FALSE], 2, function(x){
             x[is.na(x)]<- maskNA
@@ -166,8 +187,8 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
     if (!scaleDataset){
       # NOTE: if *_data are matrix, wideToLong.ts transform timevar to character, all columns become characters.
       trainset.long<- wideToLong.ts(d=crossValSets$trainset, timevar=timevar, vars=setdiff(predVars, c(idVars, staticVars)), idCols=c(idVars, staticVars), regex_time=regex_time)
-      trainset.longScaled<- scale(trainset.long[, predVars])
-      trainset.long[, predVars]<- trainset.longScaled
+      trainset.longScaled<- scale(trainset.long[, predVars.num])
+      trainset.long[, predVars.num]<- trainset.longScaled
       col_means_train<- attr(trainset.longScaled, "scaled:center")
       col_stddevs_train<- attr(trainset.longScaled, "scaled:scale")
       ## NOTE: must contain idVars and idVars should be a unique id for each case in a wide format ----
@@ -203,7 +224,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
       }
 
       if (!is.null(predInput)){
-        predInput[, predVars]<- scale(predInput[, predVars, drop=FALSE], center=col_means_train, scale=col_stddevs_train)
+        predInput[, names(col_means_train)]<- scale(predInput[, names(col_means_train), drop=FALSE], center=col_means_train, scale=col_stddevs_train)
         if (!is.null(maskNA)){
           predInput[, predVars]<- apply(predInput[, predVars, drop=FALSE], 2, function(x){
             x[is.na(x)]<- maskNA
