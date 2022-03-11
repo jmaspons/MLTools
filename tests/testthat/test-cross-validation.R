@@ -1,4 +1,4 @@
-context("NN_keras")
+context("Crossvalidation")
 
 varScale<- seq(-100, 100, length.out=4)
 names(varScale)<- paste0("X", 1:length(varScale))

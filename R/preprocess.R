@@ -41,7 +41,7 @@ longToWide.ts<- function(d, timevar, idCols=NULL){
     LHS<- "."
   }
   form<- paste0(paste(LHS, collapse=" + "), " ~ ", timevar)
-  d<- data.table::dcast(d, formula=formula(form), value.var=vars)  # To wide format (var_time columns)
+  d<- data.table::dcast(d, formula=stats::formula(form), value.var=vars)  # To wide format (var_time columns)
   if (!"data.table" %in% classOri & "data.frame" %in% classOri){
     d<- as.data.frame(d)
   } else if ("matrix" %in% classOri){

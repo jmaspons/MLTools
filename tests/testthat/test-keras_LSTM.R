@@ -52,7 +52,7 @@ verbose<- 2
 variableResponse=FALSE
 
 
-test_that("process_keras works", {
+test_that("keras_LSTM works", {
   tensorflow::tf$get_logger()$setLevel("ERROR")
   result<- list()
 
@@ -140,8 +140,8 @@ test_that("process_keras works", {
     lapply(x$model, function(y) expect_s3_class(keras::unserialize_model(y), class="keras.engine.sequential.Sequential"))
   })
   # dir(tempdir(), full.names=TRUE)
-  expect_true(any(grepl(baseFilenameNN, dir(tempdir(), full.names=TRUE))))
-  expect_equal(sum(grepl(baseFilenameNN, dir(tempdir(), full.names=TRUE))), k - 1)
+  # expect_true(any(grepl(baseFilenameNN, dir(tempdir(), full.names=TRUE))))
+  # expect_equal(sum(grepl(baseFilenameNN, dir(tempdir(), full.names=TRUE))), k - 1)
 
   tmp<- lapply(result, function(x){
     expect_type(x$DALEXexplainer, type="list")
@@ -152,7 +152,7 @@ test_that("process_keras works", {
 })
 
 
-# test_that("Predict with raster", {
+# test_that("keras_LSTM predict with raster", {
 #   tensorflow::tf$get_logger()$setLevel("ERROR")
 #   predInputR<- raster::raster(nrows=4, ncols=6)
 #   predInputR<- raster::stack(lapply(varScale, function(i){
@@ -215,7 +215,7 @@ test_that("process_keras works", {
 # })
 #
 #
-# test_that("Future plans work", {
+# test_that("Future plans work with keras_LSTM", {
 #   tensorflow::tf$get_logger()$setLevel("ERROR")
 #   # options(future.globals.onReference = "error")
 # # Error in keras::reset_states(modelNN) : attempt to apply non-function
@@ -244,7 +244,7 @@ test_that("process_keras works", {
 # })
 
 
-# test_that("scaleDataset", {
+# test_that("scaleDataset with keras_LSTM", {
 #   tensorflow::tf$get_logger()$setLevel("ERROR")
 #   future::plan(future::multisession)
 #   system.time(res<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi,
@@ -269,7 +269,7 @@ test_that("process_keras works", {
 # })
 
 
-# test_that("summary", {
+# test_that("keras_LSTM summary", {
 #   tensorflow::tf$get_logger()$setLevel("ERROR")
 #   future::plan(future::multisession)
 #   system.time(res<- process_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi,
