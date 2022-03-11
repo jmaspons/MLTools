@@ -2,8 +2,8 @@ context("NN_keras")
 
 varScale<- seq(-100, 100, length.out=4)
 names(varScale)<- paste0("X", 1:length(varScale))
-df<- data.frame(lapply(varScale, function(i) runif(100) * i))
-predInput<- data.frame(lapply(varScale, function(i) runif(50) * i))
+df<- data.frame(lapply(varScale, function(i) runif(100) * i), cat1=rep(LETTERS[1:5], times=20), cat2=rep(letters[1:10], each=10))
+predInput<- data.frame(lapply(varScale, function(i) runif(50) * i), cat1=rep(LETTERS[1:5], times=10), cat2=rep(letters[1:10], each=5))
 rowNames<- lapply(seq_len(nrow(df) %/% length(letters) + 1), function(x){
     sapply(letters, function(y) paste(rep(y, each=x), collapse=""))
   })
@@ -32,10 +32,10 @@ nCoresRaster<- 2
 variableResponse<- TRUE
 DALEXexplainer<- TRUE
 NNmodel<- TRUE
-verbose<- 0
 caseClass<- c(rep("A", 23), rep("B", 75), rep("C", 2))
 weight<- "class"
-
+verbose<- 2
+verbose<- 0
 
 test_that("process_keras works", {
   result<- list()
@@ -99,7 +99,11 @@ test_that("process_keras works", {
   tmp<- lapply(result, function(x){
     expect_type(x$variableCoef, type="list")
     lapply(x$variableCoef, function(y){
-      expectedColnames<- c("intercept", paste0("b", 1:(ncol(y) - 4)), "adj.r.squared", "r.squared", "degree")
+      if (ncol(y) > 4){
+        expectedColnames<- c("intercept", paste0("b", 1:(ncol(y) - 4)), "adj.r.squared", "r.squared", "degree")
+      } else {
+        expectedColnames<- c("intercept", "adj.r.squared", "r.squared", "degree")
+      }
       expect_equal(colnames(y), expected=expectedColnames)
     })
   })
@@ -147,6 +151,8 @@ test_that("Predict with raster", {
   resultR<- list()
   # predInput<- predInputR
 
+  ## TODO: categorical variables for rasters
+  df<- df[, names(predInputR)]
 
   suppressWarnings(future::plan(future::multicore))
   filenameRasterPred<- paste0(tempdir(), "/testMap1.grd") # avoid overwrite
@@ -234,8 +240,11 @@ test_that("scaleDataset", {
     raster::setValues(predInputR, runif(raster::ncell(predInputR)) * i)
   }))
 
-  names(predInputR)<- names(df)
+  names(predInputR)<- names(varScale)
   # predInput<- predInputR
+
+  ## TODO: categorical variables for rasters
+  df<- df[, names(predInputR)]
 
   filenameRasterPred<- paste0(tempdir(), "/testMapScaleDataset.grd") # avoid overwrite
   res<- process_keras(df, predInput=predInputR, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,

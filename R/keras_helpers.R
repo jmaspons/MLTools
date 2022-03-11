@@ -52,6 +52,15 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
   }
 
   predVars<- setdiff(colnames(df), c(responseVars, idVars))
+  predVars.cat<- names(which(!sapply(df[, predVars, drop=FALSE], is.numeric)))
+  predVars.num<- setdiff(predVars, predVars.cat)
+
+  if (length(predVars.cat) > 0){
+    df.catBin<- stats::model.matrix(stats::as.formula(paste("~ -1 +", paste(predVars.cat, collapse="+"))), data=df)
+    predVars.catBin<- colnames(df.catBin)
+    df<- cbind(df[, setdiff(colnames(df), predVars.cat)], df.catBin)
+    predVars<- c(predVars.num, predVars.catBin)
+  }
 
   ## Select and sort predVars in predInput based on var names matching in df
   idVarsPred<- NULL
@@ -61,7 +70,12 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
       predInput<- predInput[[selCols]]
       if (!identical(selCols, names(predInput)))
         stop("Input names for predictions doesn't match input for training. Check variable names.")
-    }  else if (inherits(predInput, c("data.frame", "matrix"))) {
+    } else if (inherits(predInput, c("data.frame", "matrix"))){
+      if (length(predVars.cat) > 0){
+        predInput.catBin<- stats::model.matrix(stats::as.formula(paste("~ -1 +", paste(predVars.cat, collapse="+"))), data=predInput)
+        predInput<- cbind(predInput[, setdiff(colnames(predInput), predVars.cat)], predInput.catBin)
+      }
+
       selCols<- intersect(predVars, colnames(predInput))
       idVarsPred<- intersect(idVars, colnames(predInput))
 
@@ -69,7 +83,7 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
         predInputIdVars<- predInput[, idVarsPred, drop=FALSE]
       }
 
-      predInput<- predInput[, selCols]
+      predInput<- as.matrix(predInput[, selCols])
 
       if (!identical(selCols, colnames(predInput)))
         stop("Input names for predictions doesn't match input for training. Check variable names.")
@@ -78,8 +92,8 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
   }
 
   if (scaleDataset){
-    df.scaled<- scale(df[, predVars, drop=FALSE])
-    df[, predVars]<- df.scaled
+    df.scaled<- scale(df[, predVars.num, drop=FALSE])
+    df[, predVars.num]<- df.scaled
     col_means_train<- attr(df.scaled, "scaled:center")
     col_stddevs_train<- attr(df.scaled, "scaled:scale")
     rm(df.scaled)
@@ -114,7 +128,7 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
         raster::endCluster()
 
       }  else if (inherits(predInput, c("data.frame", "matrix"))) {
-        predInput<- scale(predInput[, , drop=FALSE], center=col_means_train, scale=col_stddevs_train)
+        predInput[, predVars.num]<- scale(predInput[, predVars.num, drop=FALSE], center=col_means_train, scale=col_stddevs_train)
         if (!is.null(maskNA)){
           predInput<- apply(predInput, 2, function(x){
             x[is.na(x)]<- maskNA
@@ -137,19 +151,19 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
     # crossValSets<- NNTools:::splitdf(df, ratio=crossValRatio, sample_weight=sample_weight)
     crossValSets<- lapply(idx.repli[intersect(c("trainset", "testset"), names(idx.repli))], function(x) df[x, ])
 
-    train_labels<- as.matrix(crossValSets$trainset[, responseVars, drop=FALSE])
-    train_data<- as.matrix(crossValSets$trainset[, predVars, drop=FALSE])
+    train_labels<- crossValSets$trainset[, responseVars, drop=FALSE]
+    train_data<- crossValSets$trainset[, predVars, drop=FALSE]
 
-    test_labels<- as.matrix(crossValSets$testset[, responseVars, drop=FALSE])
-    test_data<- as.matrix(crossValSets$testset[, predVars, drop=FALSE])
+    test_labels<- crossValSets$testset[, responseVars, drop=FALSE]
+    test_data<- crossValSets$testset[, predVars, drop=FALSE]
 
     sample_weight<- idx.repli[intersect(c("weight.train", "weight.test"), names(idx.repli))]
     # if (length(sample_weight) == 0) sample_weight<- NULL
 
     # If no validation set exist, use test set to check performance
     if (length(idxSetsL$validateset) > 0){
-      validate_labels<- as.matrix(df[idxSetsL$validateset, responseVars, drop=FALSE])
-      validate_data<- as.matrix(df[idxSetsL$validateset, predVars, drop=FALSE])
+      validate_labels<- df[idxSetsL$validateset, responseVars, drop=FALSE]
+      validate_data<- df[idxSetsL$validateset, predVars, drop=FALSE]
       if (!is.null(idxSetsL$weight.validate)){
         sample_weight$weight.validate<- idxSetsL$weight.validate
       }
@@ -163,13 +177,15 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
     }
 
     if (!scaleDataset){
-      train_data<- scale(train_data)
+      train_data.scaled<- scale(train_data[, predVars.num, drop=FALSE])
+      train_data[, predVars.num]<- train_data.scaled
 
-      col_means_train<- attr(train_data, "scaled:center")
-      col_stddevs_train<- attr(train_data, "scaled:scale")
+      col_means_train<- attr(train_data.scaled, "scaled:center")
+      col_stddevs_train<- attr(train_data.scaled, "scaled:scale")
+      rm(train_data.scaled)
 
-      test_data<- scale(test_data, center=col_means_train, scale=col_stddevs_train)
-      validate_data<- scale(validate_data, center=col_means_train, scale=col_stddevs_train)
+      test_data[, predVars.num]<- scale(test_data[, predVars.num, drop=FALSE], center=col_means_train, scale=col_stddevs_train)
+      validate_data[, predVars.num]<- scale(validate_data[, predVars.num, drop=FALSE], center=col_means_train, scale=col_stddevs_train)
 
       if (!is.null(maskNA)){
         train_data<- apply(train_data, 2, function(x){
@@ -185,9 +201,29 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
           x
         })
       }
+
+      resi$scaleVals<- data.frame(mean=col_means_train, sd=col_stddevs_train)
     }
 
-    resi$scaleVals<- data.frame(mean=col_means_train, sd=col_stddevs_train)
+    if (inherits(train_data, "data.frame")){
+      train_data<- as.matrix(train_data)
+    }
+    if (inherits(test_data, "data.frame")){
+      test_data<- as.matrix(test_data)
+    }
+    if (inherits(validate_data, "data.frame")){
+      validate_data<- as.matrix(validate_data)
+    }
+
+    if (inherits(train_labels, "data.frame")){
+      train_labels<- as.matrix(train_labels)
+    }
+    if (inherits(test_labels, "data.frame")){
+      test_labels<- as.matrix(test_labels)
+    }
+    if (inherits(validate_labels, "data.frame")){
+      validate_labels<- as.matrix(validate_labels)
+    }
 
     ## TODO: check if reset_state is faster and equivalent to build_model. Not possible to reuse model among replicates
     ## WARNING: Don't import/export NNmodel nor python objects to code inside future for PSOCK clusters, callR.
@@ -352,31 +388,41 @@ variableResponse_keras<- function(explainer, variables=NULL, maxPoly=5){
 
   ## TODO: check that thesaurus linking response variable names from ingredients::partial_dependency & from original data is correct
   thesaurusResp<- data.frame(respOri=colnames(explainer$y), respIngredients=unique(varResp$`_label_`), stringsAsFactors=FALSE)
-  var_coefsL<- list()
 
   var_coefsL<- by(varResp, paste(varResp$`_label_`, varResp$`_vname_`), function(x){
-                  for (deg in 1:maxPoly){
-                    mvar<- stats::lm(`_yhat_` ~ poly(`_x_`, deg, raw=TRUE), data=x)
-                    smvar<- summary(mvar)
-
-                    if (smvar$adj.r.squared > 0.9) {
-                      break
-                    }
-                  }
-
                   # Translate response name to the original
                   form<- paste(merge(x[1, "_label_"], thesaurusResp, by.x="x", by.y="respIngredients")$respOri, "~", x[1, "_vname_"])
-                  list(formula=form, coefficients=stats::coef(mvar), degree=deg,
-                       fit=c(adj.r.squared=smvar$adj.r.squared, r.squared=smvar$r.squared))
+                  if (nrow(x) > 1){
+                    for (deg in 1:maxPoly){
+                      mvar<- stats::lm(`_yhat_` ~ poly(`_x_`, deg, raw=TRUE), data=x)
+                      smvar<- summary(mvar)
+
+                      if (smvar$adj.r.squared > 0.9) {
+                        break
+                      }
+                    }
+                    out<- list(formula=form, coefficients=stats::coef(mvar), degree=deg,
+                               fit=c(adj.r.squared=smvar$adj.r.squared, r.squared=smvar$r.squared))
+                  } else {
+                    out<- list(formula=form, coefficients=c(`(Intercept)`=NA), degree=0,
+                               fit=c(adj.r.squared=NA, r.squared=NA))
+                  }
+
+                  return(out)
   }, simplify=FALSE)
 
   # Build a matrix with NAs in missing colums
   maxNcoef<- max(sapply(var_coefsL, function(x) length(x$coefficients)))
+  if (maxNcoef > 1){
+    coefs<- paste0("b", 1:(maxNcoef - 1))
+  } else {
+    coefs<- character()
+  }
+  colNames<- c("intercept", coefs, "adj.r.squared", "r.squared", "degree")
   var_coefs<- structure(t(sapply(var_coefsL, function(x){
                     c(x$coefficients, rep(NA_real_, maxNcoef - length(x$coefficients)),
                       x$fit, x$degree)
-                })), dimnames=list(sapply(var_coefsL, function(x) x$formula),
-                                 c("intercept", paste0("b", 1:(maxNcoef - 1)), "adj.r.squared", "r.squared", "degree"))
+                })), dimnames=list(sapply(var_coefsL, function(x) x$formula), colNames)
               )
 
   return(list(var_coefs=var_coefs, variableResponse=varResp))
@@ -413,23 +459,31 @@ gatherResults.process_NN<- function(res, summarizePred, filenameRasterPred, nCor
 
     out$variableCoef<- lapply(rownames(variableCoef[[1]]), function(x){
       varCoef<- lapply(variableCoef, function(y){
-        stats::na.omit(y[x, ])
+        stats::na.omit(y[x, , drop=TRUE])
       })
 
       degrees<- sapply(varCoef, function(y) y["degree"])
       maxDegree<- max(degrees)
 
-      if (length(unique(degrees)) > 1){
-        # Add NA if varCoef elements have degree < maxDegree (different length)
-        sel<- degrees < maxDegree
-        varCoef[sel]<- lapply(varCoef[sel], function(x){
-                  c(x[1:(1 + x["degree"])], rep(NA_real_, maxDegree - x["degree"]), x[c("adj.r.squared", "r.squared", "degree")])
-                })
+      if (maxDegree > 0){
+        if (length(unique(degrees)) > 1){
+          # Add NA if varCoef elements have degree < maxDegree (different length)
+          sel<- degrees < maxDegree
+          varCoef[sel]<- lapply(varCoef[sel], function(x){
+                    c(x[1:(1 + x["degree"])], rep(NA_real_, maxDegree - x["degree"]), x[c("adj.r.squared", "r.squared", "degree")])
+                  })
+        }
+        colNames<- c("intercept", paste0("b", 1:(maxDegree)), "adj.r.squared", "r.squared", "degree")
+      } else {
+        colNames<- c("intercept", "adj.r.squared", "r.squared", "degree")
+        varCoef<- lapply(varCoef, function(x){
+          c(intercept=NA, adj.r.squared=NA, r.squared=NA, x["degree"])
+        })
       }
 
       structure(do.call(rbind, varCoef),
-                dimnames=list(names(varCoef), ## TODO: check translation response var from ingredients::partial_dependency()$`_label_`
-                              c("intercept", paste0("b", 1:(maxDegree)), "adj.r.squared", "r.squared", "degree")))
+                dimnames=list(names(varCoef), colNames))## TODO: check translation response var from ingredients::partial_dependency()$`_label_`
+
     })
     names(out$variableCoef)<- rownames(variableCoef[[1]])
   }
@@ -676,8 +730,9 @@ predict_keras<- function(modelNN, predInput, maskNA=NULL, scaleInput=FALSE, col_
 
   } else if (inherits(predInput, c("data.frame", "matrix"))) {
     if (scaleInput){
-      predInputScaled<- scale(predInput[, , drop=FALSE],
-                            center=col_means_train, scale=col_stddevs_train)
+      predInputScaled<- scale(predInput[, names(col_means_train), drop=FALSE],
+                              center=col_means_train, scale=col_stddevs_train)
+      predInputScaled<- cbind(predInputScaled, predInput[, setdiff(colnames(predInput), colnames(predInputScaled))])
       if (!is.null(maskNA)){
         predInputScaled<- apply(predInputScaled, 2, function(x){
           x[is.na(x)]<- maskNA
