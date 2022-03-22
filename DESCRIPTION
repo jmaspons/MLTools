@@ -16,7 +16,8 @@ Imports:
     ggplot2,
     ingredients,
     keras,
-    snow
+    snow,
+    abind
 Suggests:
     future.callr,
     testthat,

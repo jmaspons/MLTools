@@ -256,14 +256,15 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
 
     if (verbose > 1) message("Performance analyses done")
 
+    ## Variable importance
+    if (repVi > 0){
+      resi$variableImportance<- NNTools:::variableImportance_keras(model=modelNN, data=validate_data, y=validate_labels, repVi=repVi)
+    }
+
     ## Explain model
-    if (repVi > 0 | variableResponse | DALEXexplainer){
+    if (variableResponse | DALEXexplainer){
       explainer<- DALEX::explain(model=modelNN, data=validate_data, y=validate_labels, predict_function=stats::predict, label="MLP_keras", verbose=FALSE)
 
-      ## Variable importance
-      if (repVi > 0){
-        resi$variableImportance<- NNTools:::variableImportance_keras(explainer=explainer, repVi=repVi)
-      }
       ## Variable response
       if (variableResponse){
         resi$variableResponse<- NNTools:::variableResponse_keras(explainer)

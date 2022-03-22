@@ -10,14 +10,17 @@
 #' @param timevar column name of the variable containing the time. Use with modelType = "LSTM".
 #' @param responseTime a \code{timevar} value used as a response var for \code{responseVars} or the default "LAST" for the last timestep available (\code{max(df[, timevar])}).
 #' @param regex_time regular expression matching the \code{timevar} values format.
-#' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid report variable importance
-#' @param permDim dimension to perform the permutations to calculate the importance of the variables (data dimensions [case, time, variable]).
-#' If \code{permDim = 2:3}, it calculates the importance for each combination of the 2nd and 3rd dimensions.
+#' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.
+#' @param perm_dim dimension to perform the permutations to calculate the importance of the variables (data dimensions [case, time, variable]).
+#' If \code{perm_dim = 2:3}, it calculates the importance for each combination of the 2nd and 3rd dimensions.
+#' @param comb_dims if \code{TRUE}, do the permutations for each combination of the levels of the variables from 2nd and 3rd dimensions for input data with 3 dimensions. By default \code{FALSE}.
 #' @param crossValStrategy \code{Kfold} or \code{bootstrap}.
 #' @param replicates number of replicates when \code{crossValStrategy="bootstrap"}.
 #' @param k number of data partitions when \code{crossValStrategy="Kfold"}.
 #' @param crossValRatio Proportion of the dataset used to train, test and validate the model when \code{crossValStrategy="bootstrap"}. Default to \code{c(train=0.6, test=0.2, validate=0.2)}. If there is only one value, will be taken as a train proportion and no validate set.
-#' @param hidden_shape number of neurons in the hidden layers of the neural network model.
+#' @param hidden_shape.RNN number of neurons in the hidden layers of the Recursive Neural Network model (time series data).
+#' @param hidden_shape.static number of neurons in the hidden layers of the densely connected neural network model (static data).
+#' @param hidden_shape.main number of neurons in the hidden layers of the densely connected neural network model connecting static and time series data.
 #' @param epochs parameter for \code\link[keras]{fit}}.
 #' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
 #' @param summarizePred if \code{TRUE}, return the mean, sd and se of the predictors. if \code{FALSE}, return the predictions for each replicate.
@@ -39,8 +42,8 @@
 #' @examples
 pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars=character(), weight="class",
                    timevar=NULL, responseTime="LAST", regex_time=".+", staticVars=NULL,
-                   repVi=5, permDim=2:3, crossValStrategy=c("Kfold", "bootstrap"), k=5, replicates=10, crossValRatio=c(train=0.6, test=0.2, validate=0.2),
-                   hidden_shape=50, epochs=500, maskNA=NULL, batch_size="all",
+                   repVi=5, perm_dim=2:3, comb_dims=FALSE, crossValStrategy=c("Kfold", "bootstrap"), k=5, replicates=10, crossValRatio=c(train=0.6, test=0.2, validate=0.2),
+                   hidden_shape.RNN=c(32, 32), hidden_shape.static=c(32, 32), hidden_shape.main=32, epochs=500, maskNA=NULL, batch_size="all",
                    summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE, variableResponse=FALSE,
                    baseFilenameNN=NULL, filenameRasterPred=NULL, tempdirRaster=NULL, nCoresRaster=parallel::detectCores() %/% 2, verbose=0, ...){
   crossValStrategy<- match.arg(crossValStrategy)
@@ -83,7 +86,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
   idVarsPred<- NULL
   if (!is.null(predInput)){
     if (inherits(predInput, "Raster") & requireNamespace("raster", quietly=TRUE)){
-      ## TODO: raster predictions not implemented yet. Categorical vars
+      ## TODO: raster predictions not implemented yet. Categorical vars ----
       selCols<- intersect(predVars, names(predInput))
       predInput<- predInput[[selCols]]
       if (!identical(selCols, names(predInput)))
@@ -158,6 +161,10 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
   predVars.ts<- setdiff(colnames(df.wide), c(idVars, staticVars)) # WARNING: Includes responseVars.ts
   timevals<- unique(df[[timevar]])
 
+  if (!is.null(predInput)){
+    predInput.wide<- longToWide.ts(d=predInput, timevar=timevar, idCols=c(idVars, staticVars))
+    predInput.wide<- predInput.wide[, c(idVars, staticVars, predVars.ts), drop=FALSE]
+  }
 
   idxSetsL<- switch(crossValStrategy,
     bootstrap=bootstrap_train_test_validate(df.wide, replicates=replicates, ratio=crossValRatio, caseClass=caseClass, weight=weight),
@@ -191,7 +198,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
       trainset.long[, predVars.num]<- trainset.longScaled
       col_means_train<- attr(trainset.longScaled, "scaled:center")
       col_stddevs_train<- attr(trainset.longScaled, "scaled:scale")
-      ## NOTE: must contain idVars and idVars should be a unique id for each case in a wide format ----
+      ## NOTE: must contain idVars and idVars should be a unique id for each case in a wide format
       trainset<- longToWide.ts(d=trainset.long, timevar=timevar, idCols=c(idVars, staticVars))
 
       # Scale trestset in wide format
@@ -224,9 +231,11 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
       }
 
       if (!is.null(predInput)){
-        predInput[, names(col_means_train)]<- scale(predInput[, names(col_means_train), drop=FALSE], center=col_means_train, scale=col_stddevs_train)
+        predInput.wide[, matchVars$predVars.ts]<- scale(predInput.wide[, matchVars$predVars.ts],
+                                                   center=matchVars[, "col_means_train"],
+                                                   scale=matchVars[, "col_stddevs_train"])
         if (!is.null(maskNA)){
-          predInput[, predVars]<- apply(predInput[, predVars, drop=FALSE], 2, function(x){
+          predInput.wide[, selCols]<- apply(predInput.wide[, selCols], 2, function(x){
             x[is.na(x)]<- maskNA
             x
           })
@@ -242,52 +251,65 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
     test_labels<- crossValSets$testset[, c(idVars, responseVars.ts), drop=FALSE]
     test_data<- crossValSets$testset[, c(idVars, staticVars, predVars.ts), drop=FALSE]
 
-    if (length(idxSetsL$validateset) > 0){
-      validate_labels<- validationSet[, c(idVars, responseVars.ts), drop=FALSE]
-      validate_data<- validationSet[, c(idVars, staticVars, predVars.ts), drop=FALSE]
-      if (!is.null(idxSetsL$weight.validate)){
-        ## TODO: check case weights match data set cases ----
-        sample_weight$weight.validate<- idxSetsL$weight.validate
-      }
-    } else {
-      validate_labels<- test_labels
-      validate_data<- test_data
-
-      if (!is.null(idxSetsL$weight.validate)){
-        ## TODO: check case weights match data set cases ----
-        sample_weight$weight.validate<- sample_weight$weight.test
-      }
-    }
+    validate_labels<- validationSet[, c(idVars, responseVars.ts), drop=FALSE]
+    validate_data<- validationSet[, c(idVars, staticVars, predVars.ts), drop=FALSE]
 
 
     # Reshape data to 3D arrays [samples, timesteps, features] as expected by LSTM layer
-    # TODO: layer for static vars
     train_data.3d<- wideTo3Darray.ts(d=train_data, vars=setdiff(predVars, staticVars), idCols=idVars)
     test_data.3d<- wideTo3Darray.ts(d=test_data, vars=setdiff(predVars, staticVars), idCols=idVars)
     validate_data.3d<- wideTo3Darray.ts(d=validate_data, vars=setdiff(predVars, staticVars), idCols=idVars)
 
+    train_labels<- structure(as.matrix(train_labels[, responseVars.ts, drop=FALSE]),
+                        dimnames=list(case=do.call(paste, c(train_labels[, idVars, drop=FALSE], list(sep="_"))), var=responseVars.ts))
+    test_labels<- structure(as.matrix(test_labels[, responseVars.ts, drop=FALSE]),
+                        dimnames=list(case=do.call(paste, c(test_labels[, idVars, drop=FALSE], list(sep="_"))), var=responseVars.ts))
+    validate_labels<- structure(as.matrix(validate_labels[, responseVars.ts, drop=FALSE]),
+                        dimnames=list(case=do.call(paste, c(validate_labels[, idVars, drop=FALSE], list(sep="_"))), var=responseVars.ts))
+
     ## TODO: decide if responseVars.ts<- NA or remove predVars.tf ----
     if (is.null(maskNA)){
       train_data.3d<- train_data.3d[, setdiff(dimnames(train_data.3d)[[2]], responseTime), ]
+      test_data.3d<- test_data.3d[, setdiff(dimnames(test_data.3d)[[2]], responseTime), ]
+      validate_data.3d<- validate_data.3d[, setdiff(dimnames(validate_data.3d)[[2]], responseTime), ]
     } else {
     # VS
       train_data.3d[, as.character(responseTime), responseVars]<- maskNA
+      test_data.3d[, as.character(responseTime), responseVars]<- maskNA
+      validate_data.3d[, as.character(responseTime), responseVars]<- maskNA
     }
+
+    if (length(staticVars) > 0){
+      train_data.static<- structure(as.matrix(train_data[, staticVars, drop=FALSE]),
+                                    dimnames=list(case=do.call(paste, c(train_data[, idVars, drop=FALSE], list(sep="_"))), var=staticVars))
+      test_data.static<- structure(as.matrix(test_data[, staticVars, drop=FALSE]),
+                                   dimnames=list(case=do.call(paste, c(test_data[, idVars, drop=FALSE], list(sep="_"))), var=staticVars))
+      validate_data.static<- structure(as.matrix(validate_data[, staticVars, drop=FALSE]),
+                                       dimnames=list(case=do.call(paste, c(validate_data[, idVars, drop=FALSE], list(sep="_"))), var=staticVars))
+
+      train_data<- list(TS_input=train_data.3d, Static_input=train_data.static)
+      test_data<- list(TS_input=test_data.3d, Static_input=test_data.static)
+      validate_data<- list(TS_input=validate_data.3d, Static_input=validate_data.static)
+    } else {
+      train_data<- train_data.3d
+      test_data<- test_data.3d
+      validate_data<- validate_data.3d
+    }
+
     ## TODO: check if reset_state is faster and equivalent to build_model. Not possible to reuse model among replicates
     ## WARNING: Don't import/export NNmodel nor python objects to code inside future for PSOCK clusters, callR.
     # https://cran.r-project.org/web/packages/future/vignettes/future-4-non-exportable-objects.html
     # modelNN<- keras::reset_states(modelNN)
 
-    modelNN<- NNTools:::build_modelLTSM(input_shape=dim(train_data.3d)[-1], output_shape=length(responseVars),
-                                          hidden_shape=hidden_shape, mask=maskNA)
+    modelNN<- NNTools:::build_modelLTSM(input_shape.ts=dim(train_data.3d)[-1], input_shape.static=length(staticVars), output_shape=length(responseVars),
+                                          hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main, mask=maskNA)
 
     ## Check convergence on the max epochs frame
     early_stop<- keras::callback_early_stopping(monitor="val_loss", patience=30)
 
     ## NOTE: all data must be matrix or array or a list of if the model has multiple inputs
-    modelNN<- NNTools:::train_keras(modelNN=modelNN, train_data=train_data.3d, train_labels=as.matrix(train_labels[, responseVars.ts, drop=FALSE]),
-                           test_data=test_data.3d, test_labels=as.matrix(test_labels[, responseVars.ts, drop=FALSE]), epochs=epochs, batch_size=batch_size,
-                           sample_weight=sample_weight, callbacks=early_stop, verbose=verbose)
+    modelNN<- NNTools:::train_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels, test_data=test_data, test_labels=test_labels,
+                                    epochs=epochs, batch_size=batch_size, sample_weight=sample_weight, callbacks=early_stop, verbose=verbose)
 
     if (verbose > 1) message("Training done")
 
@@ -301,7 +323,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
     } else {
       sample_weight.validate<- NULL
     }
-    resi$performance<- NNTools:::performance_keras(modelNN=modelNN, test_data=validate_data.3d, test_labels=as.matrix(validate_labels[, responseVars.ts, drop=FALSE]),
+    resi$performance<- NNTools:::performance_keras(modelNN=modelNN, test_data=validate_data, test_labels=validate_labels,
                              batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size),
                              sample_weight=sample_weight.validate, verbose=verbose)
 
@@ -309,21 +331,33 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
 
     ## Explain model
     ## TODO: fix Explain model incorrect number of dimensions. Perhaps not ready for 3d data? ----
-    if (repVi > 0 | variableResponse | DALEXexplainer){
-      explainer<- DALEX::explain(model=modelNN, data=validate_data.3d, y=as.matrix(validate_labels[, responseVars.ts, drop=FALSE]), predict_function=stats::predict, label="MLP_keras", verbose=FALSE)
+    if (repVi > 0){
+      resi$variableImportance<- NNTools:::variableImportance_keras(model=modelNN, data=validate_data, y=validate_labels,
+                                                                   repVi=repVi, perm_dim=perm_dim, comb_dims=comb_dims)
+
+    }
+
+    if (variableResponse | DALEXexplainer){
+      ## TODO: DALEX not ready for multiinput models
+      # explainer<- DALEX::explain(model=modelNN, data=validate_data, y=validate_labels, predict_function=stats::predict, label="MLP_keras", verbose=FALSE)
 
       ## Variable importance
-      if (repVi > 0){
-        resi$variableImportance<- NNTools:::variableImportance_keras(explainer=explainer, repVi=repVi, permDim=permDim)
-      }
+
+
       ## Variable response
       if (variableResponse){
-        warning("variableResponse not implemented for 3d arrays yet. TODO: fix ingredients::partial_dependence")
+        # warning("variableResponse not implemented for 3d arrays yet. TODO: fix ingredients::partial_dependence")
         # resi$variableResponse<- variableResponse_keras(explainer)
       }
 
       if (DALEXexplainer){
-        resi$explainer<- explainer
+        if (length(staticVars) > 0){
+          ## TODO
+          # warning("DALEX not ready for multiinput models")
+        } else {
+          explainer<- DALEX::explain(model=modelNN, data=validate_data, y=validate_labels, predict_function=stats::predict, label="RNN_keras", verbose=FALSE)
+          resi$explainer<- explainer
+        }
       }
       if (verbose > 1) message("Model analyses done")
     }
@@ -335,10 +369,23 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
         batch_sizePred<- ifelse(batch_size %in% "all", raster::ncell(predInput), batch_size)
       } else {
         batch_sizePred<- ifelse(batch_size %in% "all", nrow(predInput), batch_size)
-        predInput.3d<- longTo3Darray.ts(d=predInput, timevar=timevar, idCols=c(idVars, staticVars))
+        predInput.3d<- wideTo3Darray.ts(d=predInput.wide, vars=setdiff(predVars, staticVars), idCols=idVars)
+        if (is.null(maskNA)){
+          predInput.3d<- predInput.3d[, setdiff(dimnames(predInput.3d)[[2]], responseTime), ]
+        } else {
+          predInput.3d[, as.character(responseTime), responseVars]<- maskNA
+        }
+        if (length(staticVars) > 0){
+          predInput.static<- structure(as.matrix(predInput.wide[, staticVars, drop=FALSE]),
+                                       dimnames=list(case=do.call(paste, c(predInput.wide[, idVars, drop=FALSE], list(sep="_"))), var=staticVars))
+
+          predInput<- list(TS_input=predInput.3d, Static_input=predInput.static)
+        } else {
+          predInput<- predInput.3d
+        }
       }
 
-      resi$predictions<- NNTools:::predict_keras(modelNN=modelNN, predInput=predInput.3d,
+      resi$predictions<- NNTools:::predict_keras(modelNN=modelNN, predInput=predInput,
                                scaleInput=FALSE, batch_size=batch_sizePred, tempdirRaster=tempdirRaster, nCoresRaster=nCoresRaster)
       if (inherits(resi$predictions, "matrix")){
         colnames(resi$predictions)<- responseVars

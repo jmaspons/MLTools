@@ -33,15 +33,14 @@ performance_keras<- function(modelNN, test_data, test_labels, batch_size, sample
 }
 
 
-# @importFrom DALEX explain
-# @importFrom ingredients feature_importance
-variableImportance_keras<- function(explainer, repVi=5, permDim=2){
+variableImportance_keras<- function(model, data, y, repVi=5, perm_dim=NULL, comb_dims=FALSE){
   if (repVi > 0){
-    vi<- ingredients::feature_importance(explainer, B=repVi, permDim=permDim)
-    vi<- stats::reshape(as.data.frame(vi)[, c("variable", "dropout_loss", "permutation")], timevar="permutation", idvar="variable", direction="wide")
+    vi<- ingredients::feature_importance(x=model, data=data, y=y, B=repVi, perm_dim=perm_dim, comb_dims=comb_dims, predict_function=stats::predict)
+    # vi[, "permutation" == 0] -> average; vi[, "permutation" > 0] -> replicates
+    vi<- stats::reshape(as.data.frame(vi)[vi[, "permutation"] > 0, c("variable", "dropout_loss", "permutation")], timevar="permutation", idvar="variable", direction="wide")
     vi<- structure(as.matrix(vi[, -1]),
                    dimnames=list(as.character(vi$variable),
-                     paste0("perm", formatC(0:(ncol(vi) -2), format="d", flag="0", width=nchar(repVi)))))
+                                 paste0("perm", formatC(1:(ncol(vi) -1), format="d", flag="0", width=nchar(repVi)))))
   } else {
     vi<- NA
   }
@@ -68,7 +67,7 @@ variableResponse_keras<- function(explainer, variables=NULL, maxPoly=5){
                       mvar<- stats::lm(`_yhat_` ~ poly(`_x_`, deg, raw=TRUE), data=x)
                       smvar<- summary(mvar)
 
-                      if (smvar$adj.r.squared > 0.9) {
+                      if (smvar$adj.r.squared > 0.9 | !is.finite(smvar$adj.r.squared)) {
                         break
                       }
                     }
@@ -263,16 +262,43 @@ build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128, mask=NU
   model
 }
 
-build_modelLTSM<- function(input_shape, output_shape=1, hidden_shape=128, mask){
+build_modelLTSM<- function(input_shape.ts, input_shape.static=0, output_shape=1,
+                           hidden_shape.RNN=32, hidden_shape.static=16, hidden_shape.main=32, mask=NULL){
+  inputs.ts<- layer_input(shape=input_shape.ts, name="TS_input")
+  inputs.static<- layer_input(shape=input_shape.static, name="Static_input")
+
   if (is.null(mask)){
-    model<- keras_model_sequential() %>%
-      layer_lstm(units=hidden_shape, activation="relu", input_shape=input_shape) %>%
-      layer_dense(units=output_shape)
+    predictions.ts<- inputs.ts
+    predictions.static<- inputs.static
   } else {
-    model<- keras_model_sequential() %>%
-      layer_masking(mask_value=mask, input_shape=input_shape) %>%
-      layer_lstm(units=hidden_shape, activation="relu") %>%
-      layer_dense(units=output_shape)
+    predictions.ts<- inputs.ts %>% layer_masking(mask_value=mask, input_shape=input_shape.ts, name=paste0("mask.ts_", mask))
+    predictions.static<- inputs.static %>% layer_masking(mask_value=mask, input_shape=input_shape.ts, name=paste0("mask.static_", mask))
+  }
+
+  predictions.ts<- inputs.ts
+  for (i in 1:length(hidden_shape.RNN)){
+    predictions.ts<- predictions.ts %>% layer_lstm(units=hidden_shape.RNN[i], name=paste0("LSTM_", i))
+  }
+
+  if (input_shape.static > 0){
+    predictions.static<- inputs.static
+    for (i in 1:length(hidden_shape.static)){
+      predictions.static<- predictions.static %>% layer_dense(units=hidden_shape.static[i], name=paste0("Dense_", i))
+    }
+    output<- layer_concatenate(c(predictions.ts, predictions.static))
+  } else {
+    output<- predictions.ts
+  }
+
+  for (i in 1:length(hidden_shape.main)){
+    output<- output %>% layer_dense(units=hidden_shape.main[i], name=paste0("main_dense_", i))
+  }
+  output<- output %>% layer_dense(units=output_shape, name="main_output")
+
+  if (input_shape.static > 0){
+    model<- keras_model(inputs=c(inputs.ts, inputs.static), outputs=output)
+  } else {
+    model<- keras_model(inputs=inputs.ts, outputs=output)
   }
 
   compile(model,
