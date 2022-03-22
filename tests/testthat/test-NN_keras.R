@@ -86,8 +86,8 @@ test_that("process_keras works", {
   tmp<- lapply(result, function(x){
     expect_type(x$vi, type="double")
     reps<- nrow(x$performance)
-    expectedColnames<- paste0(rep(paste0("rep", formatC(1:reps, format="d", flag="0", width=nchar(reps))), each=repVi + 1), "_",
-                              rep(paste0("perm", formatC(0:repVi, format="d", flag="0", width=nchar(repVi))), times=reps))
+    expectedColnames<- paste0(rep(paste0("rep", formatC(1:reps, format="d", flag="0", width=nchar(reps))), each=repVi), "_",
+                              rep(paste0("perm", formatC(1:repVi, format="d", flag="0", width=nchar(repVi))), times=reps))
     expect_equal(colnames(x$vi), expected=expectedColnames)
   })
 
@@ -121,7 +121,7 @@ test_that("process_keras works", {
   tmp<- lapply(result, function(x){
     expect_type(x$model, type="list")
     lapply(x$model, function(y) expect_type(y, type="raw"))
-    lapply(x$model, function(y) expect_s3_class(keras::unserialize_model(y), class="keras.engine.sequential.Sequential"))
+    lapply(x$model, function(y) expect_s3_class(keras::unserialize_model(y), class="keras.engine.training.Model"))
   })
   # dir(tempdir(), full.names=TRUE)
   expect_true(any(grepl(baseFilenameNN, dir(tempdir(), full.names=TRUE))))
