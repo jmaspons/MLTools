@@ -115,10 +115,10 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
           filenameScaled<- raster::rasterTmpFile()
         }
 
-        # predInputScaled<- raster::scale(predInput, center=col_means_train, scale=col_stddevs_train)
-        # predInputScaled<- raster::calc(predInput, filename=filenameScaled, fun=function(x) scale(x, center=col_means_train, scale=col_stddevs_train))
+        # predInputScaled<- raster::scale(predInput[[names(col_means_train)]], center=col_means_train, scale=col_stddevs_train)
+        # predInputScaled<- raster::calc(predInput[[names(col_means_train)]], filename=filenameScaled, fun=function(x) scale(x, center=col_means_train, scale=col_stddevs_train))
         raster::beginCluster(n=nCoresRaster)
-        predInput[[predVars.num]]<- raster::clusterR(predInput[[predVars.num]], function(x, col_means_train, col_stddevs_train){
+        predInput[[names(col_means_train)]]<- raster::clusterR(predInput[[names(col_means_train)]], function(x, col_means_train, col_stddevs_train){
                               raster::calc(x, fun=function(y) scale(y, center=col_means_train, scale=col_stddevs_train))
                             }, args=list(col_means_train=col_means_train, col_stddevs_train=col_stddevs_train), filename=filenameScaled)
         if (!is.null(maskNA)){
