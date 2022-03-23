@@ -13,9 +13,9 @@ rownames(predInput)<- rowNames[1:nrow(predInput)]
 responseVars<- 1
 crossValStrategy<- c("Kfold", "bootstrap")
 crossValRatio<- c(train=0.6, test=0.2, validate=0.2)
-k<- 5
+k<- 3
 idVars<- character()
-epochs<- 5
+epochs<- 3
 maskNA<- -999
 replicates<- 2
 repVi<- 3
