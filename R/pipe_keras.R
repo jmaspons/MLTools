@@ -6,7 +6,7 @@
 #' @param caseClass class of the samples used to weight cases. Column names or indexes on df, or a vector with the class for each rows in df.
 #' @param idVars id column names or indexes on df and/or predInput. Deprecated default for compatibility c("x", "y")
 #' @param weight Optional array of the same length as \code{nrow(df)}, containing weights to apply to the model's loss for each sample.
-#' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid report variable importance
+#' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.
 #' @param crossValStrategy \code{Kfold} or \code{bootstrap}.
 #' @param replicates number of replicates when \code{crossValStrategy="bootstrap"}.
 #' @param k number of data partitions when \code{crossValStrategy="Kfold"}.
@@ -149,7 +149,7 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
 
   res<- future.apply::future_lapply(idxSetsL$replicates, function(idx.repli){
     resi<- list()
-    # crossValSets<- NNTools:::splitdf(df, ratio=crossValRatio, sample_weight=sample_weight)
+    # crossValSets<- splitdf(df, ratio=crossValRatio, sample_weight=sample_weight)
     crossValSets<- lapply(idx.repli[intersect(c("trainset", "testset"), names(idx.repli))], function(x) df[x, ])
 
     train_labels<- crossValSets$trainset[, responseVars, drop=FALSE]
@@ -229,15 +229,15 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
     ## TODO: check if reset_state is faster and equivalent to build_model. Not possible to reuse model among replicates
     ## WARNING: Don't import/export NNmodel nor python objects to code inside future for PSOCK clusters, callR.
     # https://cran.r-project.org/web/packages/future/vignettes/future-4-non-exportable-objects.html
-    modelNN<- NNTools:::build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars), hidden_shape=hidden_shape, mask=maskNA)
+    modelNN<- build_modelDNN(input_shape=length(predVars), output_shape=length(responseVars), hidden_shape=hidden_shape, mask=maskNA)
     # modelNN<- keras::reset_states(modelNN)
 
     ## Check convergence on the max epochs frame
     early_stop<- keras::callback_early_stopping(monitor="val_loss", patience=30)
 
-    modelNN<- NNTools:::train_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels,
-                           test_data=test_data, test_labels=test_labels, epochs=epochs, batch_size=batch_size,
-                           sample_weight=sample_weight, callbacks=early_stop, verbose=verbose)
+    modelNN<- train_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels,
+                          test_data=test_data, test_labels=test_labels, epochs=epochs, batch_size=batch_size,
+                          sample_weight=sample_weight, callbacks=early_stop, verbose=verbose)
     if (verbose > 1) message("Training done")
 
     if (NNmodel){
@@ -250,15 +250,15 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
     } else {
       sample_weight.validate<- NULL
     }
-    resi$performance<- NNTools:::performance_keras(modelNN=modelNN, test_data=validate_data, test_labels=validate_labels,
-                             batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size),
-                             sample_weight=sample_weight.validate, verbose=verbose)
+    resi$performance<- performance_keras(modelNN=modelNN, test_data=validate_data, test_labels=validate_labels,
+                                         batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size),
+                                         sample_weight=sample_weight.validate, verbose=verbose)
 
     if (verbose > 1) message("Performance analyses done")
 
     ## Variable importance
     if (repVi > 0){
-      resi$variableImportance<- NNTools:::variableImportance_keras(model=modelNN, data=validate_data, y=validate_labels, repVi=repVi)
+      resi$variableImportance<- variableImportance_keras(model=modelNN, data=validate_data, y=validate_labels, repVi=repVi)
     }
 
     ## Explain model
@@ -267,7 +267,7 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
 
       ## Variable response
       if (variableResponse){
-        resi$variableResponse<- NNTools:::variableResponse_keras(explainer)
+        resi$variableResponse<- variableResponse_keras(explainer)
       }
 
       if (DALEXexplainer){
@@ -284,9 +284,9 @@ process_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idV
         batch_sizePred<- ifelse(batch_size %in% "all", nrow(predInput), batch_size)
       }
 
-      resi$predictions<- NNTools:::predict_keras(modelNN=modelNN, predInput=predInput, maskNA=maskNA,
-                               scaleInput=!scaleDataset, col_means_train=col_means_train, col_stddevs_train=col_stddevs_train,
-                               batch_size=batch_sizePred, tempdirRaster=tempdirRaster, nCoresRaster=nCoresRaster)
+      resi$predictions<- predict_keras(modelNN=modelNN, predInput=predInput, maskNA=maskNA,
+                             scaleInput=!scaleDataset, col_means_train=col_means_train, col_stddevs_train=col_stddevs_train,
+                             batch_size=batch_sizePred, tempdirRaster=tempdirRaster, nCoresRaster=nCoresRaster)
       if (inherits(resi$predictions, "matrix")){
         colnames(resi$predictions)<- responseVars
         rownames(resi$predictions)<- rownames(predInput)

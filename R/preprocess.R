@@ -35,7 +35,7 @@ longToWide.ts<- function(d, timevar, idCols=NULL){
 
   vars<- setdiff(colnames(d), c(idCols, timevar))
   # timevals<- unique(d[, ..timevar])[[1]]
-  timevals<- unique(data.table:::`[.data.table`(x=d, , j=timevar, with=FALSE))[[1]] # without importing data.table functions
+  timevals<- unique(data.table::`[.data.table`(x=d, , j=timevar, with=FALSE))[[1]] # without importing data.table functions
   LHS<- setdiff(idCols, timevar)
   if (is.null(LHS) | length(LHS) == 0){
     LHS<- "."

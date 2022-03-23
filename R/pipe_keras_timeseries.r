@@ -301,15 +301,15 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
     # https://cran.r-project.org/web/packages/future/vignettes/future-4-non-exportable-objects.html
     # modelNN<- keras::reset_states(modelNN)
 
-    modelNN<- NNTools:::build_modelLTSM(input_shape.ts=dim(train_data.3d)[-1], input_shape.static=length(staticVars), output_shape=length(responseVars),
-                                          hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main, mask=maskNA)
+    modelNN<- build_modelLTSM(input_shape.ts=dim(train_data.3d)[-1], input_shape.static=length(staticVars), output_shape=length(responseVars),
+                              hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main, mask=maskNA)
 
     ## Check convergence on the max epochs frame
     early_stop<- keras::callback_early_stopping(monitor="val_loss", patience=30)
 
     ## NOTE: all data must be matrix or array or a list of if the model has multiple inputs
-    modelNN<- NNTools:::train_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels, test_data=test_data, test_labels=test_labels,
-                                    epochs=epochs, batch_size=batch_size, sample_weight=sample_weight, callbacks=early_stop, verbose=verbose)
+    modelNN<- train_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels, test_data=test_data, test_labels=test_labels,
+                          epochs=epochs, batch_size=batch_size, sample_weight=sample_weight, callbacks=early_stop, verbose=verbose)
 
     if (verbose > 1) message("Training done")
 
@@ -323,18 +323,18 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
     } else {
       sample_weight.validate<- NULL
     }
-    resi$performance<- NNTools:::performance_keras(modelNN=modelNN, test_data=validate_data, test_labels=validate_labels,
-                             batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size),
-                             sample_weight=sample_weight.validate, verbose=verbose)
+    resi$performance<- performance_keras(modelNN=modelNN, test_data=validate_data, test_labels=validate_labels,
+                                         batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size),
+                                         sample_weight=sample_weight.validate, verbose=verbose)
 
     if (verbose > 1) message("Performance analyses done")
 
     ## Explain model
     ## TODO: fix Explain model incorrect number of dimensions. Perhaps not ready for 3d data? ----
-    if (repVi > 0){
-      resi$variableImportance<- NNTools:::variableImportance_keras(model=modelNN, data=validate_data, y=validate_labels,
-                                                                   repVi=repVi, perm_dim=perm_dim, comb_dims=comb_dims)
 
+    if (repVi > 0){
+      resi$variableImportance<- variableImportance_keras(model=modelNN, data=validate_data, y=validate_labels,
+                                                         repVi=repVi, perm_dim=perm_dim, comb_dims=comb_dims)
     }
 
     if (variableResponse | DALEXexplainer){
@@ -385,7 +385,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
         }
       }
 
-      resi$predictions<- NNTools:::predict_keras(modelNN=modelNN, predInput=predInput,
+      resi$predictions<- predict_keras(modelNN=modelNN, predInput=predInput,
                                scaleInput=FALSE, batch_size=batch_sizePred, tempdirRaster=tempdirRaster, nCoresRaster=nCoresRaster)
       if (inherits(resi$predictions, "matrix")){
         colnames(resi$predictions)<- responseVars
