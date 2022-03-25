@@ -155,9 +155,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
   ## TODO: QUESTION: How to build de 3Darray? Discard responseTime VS responseTime for responseVars <- NA VS irregular shape coder/encoder layer ----
   responseVars.ts<- paste0(responseVars, "_", responseTime)
   predVars.tf<- paste0(setdiff(predVars, staticVars), "_", responseTime)
-  df.long<- df
   df.wide<- longToWide.ts(d=df, timevar=timevar, idCols=c(idVars, staticVars))
-  # vars<- colnames(df.long[, predVars])
   predVars.ts<- setdiff(colnames(df.wide), c(idVars, staticVars)) # WARNING: Includes responseVars.ts
   timevals<- unique(df[[timevar]])
 

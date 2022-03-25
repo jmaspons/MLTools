@@ -35,12 +35,12 @@ longToWide.ts<- function(d, timevar, idCols=NULL){
 
   vars<- setdiff(colnames(d), c(idCols, timevar))
   # timevals<- unique(d[, ..timevar])[[1]]
-  timevals<- unique(data.table::`[.data.table`(x=d, , j=timevar, with=FALSE))[[1]] # without importing data.table functions
+  timevals<- unique(data.table:::`[.data.table`(x=d, , j=timevar, with=FALSE))[[1]] # without importing data.table functions
   LHS<- setdiff(idCols, timevar)
   if (is.null(LHS) | length(LHS) == 0){
     LHS<- "."
   }
-  form<- paste0(paste(LHS, collapse=" + "), " ~ ", timevar)
+  form<- paste0("`", paste(LHS, collapse="` + `"), "` ~ `", timevar, "`")
   d<- data.table::dcast(d, formula=stats::formula(form), value.var=vars)  # To wide format (var_time columns)
   if (!"data.table" %in% classOri & "data.frame" %in% classOri){
     d<- as.data.frame(d)
