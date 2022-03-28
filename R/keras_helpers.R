@@ -102,8 +102,15 @@ variableResponse_keras<- function(explainer, variables=NULL, maxPoly=5){
 gatherResults.process_NN<- function(res, summarizePred, filenameRasterPred, nCoresRaster){
   names(res)<- paste0("rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res))))
 
-  out<- list(performance=do.call(rbind, lapply(res, function(x) x$performance)),
-             scale=lapply(res, function(x) x$scaleVals))
+  out<- list(performance=do.call(rbind, lapply(res, function(x) x$performance)))
+  sc<- lapply(res, function(x) {
+    s<- x$scaleVals
+  })
+  sc<- sc[!sapply(sc, is.null)]
+  if (length(sc) == 1 & all(names(sc[[1]]) == "dataset")){
+    sc<- sc[[1]]
+  }
+  out$scale<- sc
 
   if (!is.null(res[[1]]$variableImportance)){
     vi<- lapply(res, function(x){
