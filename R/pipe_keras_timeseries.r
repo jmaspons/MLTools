@@ -107,13 +107,6 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
     col_stddevs_train<- attr(df.scaled, "scaled:scale")
     rm(df.scaled)
 
-    if (!is.null(maskNA)){
-      df[, predVars]<- apply(df[, predVars, drop=FALSE], 2, function(x){
-        x[is.na(x)]<- maskNA
-        x
-      })
-    }
-
     if (!is.null(predInput)){
 
       if (inherits(predInput, "Raster") & requireNamespace("raster", quietly=TRUE)){
@@ -138,12 +131,6 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
 
       }  else if (inherits(predInput, c("data.frame", "matrix"))) {
         predInput[, names(col_means_train)]<- scale(predInput[, names(col_means_train), drop=FALSE], center=col_means_train, scale=col_stddevs_train)
-        if (!is.null(maskNA)){
-          predInput[, predVars]<- apply(predInput[, predVars, drop=FALSE], 2, function(x){
-            x[is.na(x)]<- maskNA
-            x
-          })
-        }
       }
 
     }
@@ -162,6 +149,20 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
   if (!is.null(predInput)){
     predInput.wide<- longToWide.ts(d=predInput, timevar=timevar, idCols=c(idVars, staticVars))
     predInput.wide<- predInput.wide[, c(idVars, staticVars, predVars.ts), drop=FALSE]
+  }
+
+  if (!is.null(maskNA) & scaleDataset){
+    df.wide[, c(staticVars, predVars.ts)]<- apply(df.wide[, c(staticVars, predVars.ts), drop=FALSE], 2, function(x){
+      x[is.na(x)]<- maskNA
+      x
+    })
+
+    if (!is.null(predInput)){
+      predInput.wide[, c(staticVars, predVars.ts)]<- apply(predInput.wide[, c(staticVars, predVars.ts), drop=FALSE], 2, function(x){
+        x[is.na(x)]<- maskNA
+        x
+      })
+    }
   }
 
   idxSetsL<- switch(crossValStrategy,
