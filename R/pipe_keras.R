@@ -129,7 +129,7 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
         raster::endCluster()
 
       }  else if (inherits(predInput, c("data.frame", "matrix"))) {
-        predInput[, predVars.num]<- scale(predInput[, predVars.num, drop=FALSE], center=col_means_train, scale=col_stddevs_train)
+        predInput[, names(col_means_train)]<- scale(predInput[, names(col_means_train), drop=FALSE], center=col_means_train, scale=col_stddevs_train)
         if (!is.null(maskNA)){
           predInput<- apply(predInput, 2, function(x){
             x[is.na(x)]<- maskNA
@@ -185,8 +185,8 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
       col_stddevs_train<- attr(train_data.scaled, "scaled:scale")
       rm(train_data.scaled)
 
-      test_data[, predVars.num]<- scale(test_data[, predVars.num, drop=FALSE], center=col_means_train, scale=col_stddevs_train)
-      validate_data[, predVars.num]<- scale(validate_data[, predVars.num, drop=FALSE], center=col_means_train, scale=col_stddevs_train)
+      test_data[, names(col_means_train)]<- scale(test_data[, names(col_means_train), drop=FALSE], center=col_means_train, scale=col_stddevs_train)
+      validate_data[, names(col_means_train)]<- scale(validate_data[, names(col_means_train), drop=FALSE], center=col_means_train, scale=col_stddevs_train)
 
       if (!is.null(maskNA)){
         train_data<- apply(train_data, 2, function(x){
