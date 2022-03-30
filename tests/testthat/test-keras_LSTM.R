@@ -67,28 +67,28 @@ test_that("keras_LSTM works", {
   # future::value(f)
   system.time(result$resp1summarizedPred<- pipe_keras_timeseries(df=df, predInput=predInput, responseVars=responseVars, caseClass=caseClass, idVars=idVars, weight=weight,
                                                                  timevar=timevar, responseTime=responseTime, regex_time=regex_time, staticVars=staticVars,
-                                                                 repVi=repVi, perm_dim=perm_dim, crossValStrategy=crossValStrategy[1], k=k, replicates=replicates, crossValRatio=crossValRatio,
+                                                                 repVi=repVi, perm_dim=perm_dim, comb_dims=comb_dims crossValStrategy=crossValStrategy[1], k=k, replicates=replicates, crossValRatio=crossValRatio,
                                                                  hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main, epochs=epochs, maskNA=maskNA, batch_size=batch_size,
                                                                  summarizePred=TRUE, scaleDataset=scaleDataset, NNmodel=NNmodel, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse)
   )
 
   system.time(result$resp2summarizedPred<- pipe_keras_timeseries(df=df, predInput=predInput, responseVars=c("y", "x1"), caseClass=caseClass, idVars=idVars, weight=weight,
                                                                  timevar=timevar, responseTime=responseTime, regex_time=regex_time, staticVars=staticVars,
-                                                                 repVi=repVi, perm_dim=perm_dim, crossValStrategy=crossValStrategy[2], k=k, replicates=replicates, crossValRatio=crossValRatio,
+                                                                 repVi=repVi, perm_dim=perm_dim, comb_dims=TRUE, crossValStrategy=crossValStrategy[2], k=k, replicates=replicates, crossValRatio=crossValRatio,
                                                                  hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main, epochs=epochs, maskNA=maskNA, batch_size=batch_size,
                                                                  summarizePred=TRUE, scaleDataset=scaleDataset, NNmodel=NNmodel, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse)
                                                          )
 
   system.time(result$resp1<- pipe_keras_timeseries(df=df, predInput=predInput, responseVars=responseVars, caseClass=caseClass, idVars=idVars, weight=weight,
                                                    timevar=timevar, responseTime=responseTime, regex_time=regex_time, staticVars=staticVars,
-                                                   repVi=repVi, perm_dim=perm_dim, crossValStrategy=crossValStrategy[2], k=k, replicates=replicates, crossValRatio=crossValRatio,
+                                                   repVi=repVi, perm_dim=perm_dim, comb_dims=TRUE, crossValStrategy=crossValStrategy[2], k=k, replicates=replicates, crossValRatio=crossValRatio,
                                                    hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main, epochs=epochs, maskNA=maskNA, batch_size=batch_size,
                                                    summarizePred=FALSE, scaleDataset=scaleDataset, NNmodel=NNmodel, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse)
   )
 
   system.time(result$resp2<- pipe_keras_timeseries(df=df, predInput=predInput, responseVars=responseVars, caseClass=caseClass, idVars=idVars, weight=weight,
                                                    timevar=timevar, responseTime=responseTime, regex_time=regex_time, staticVars=staticVars,
-                                                   repVi=repVi, perm_dim=perm_dim, crossValStrategy=crossValStrategy[1], k=k, replicates=replicates, crossValRatio=crossValRatio,
+                                                   repVi=repVi, perm_dim=perm_dim, comb_dims=comb_dims, crossValStrategy=crossValStrategy[1], k=k, replicates=replicates, crossValRatio=crossValRatio,
                                                    hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main, epochs=epochs, maskNA=maskNA, batch_size=batch_size,
                                                    summarizePred=FALSE, scaleDataset=scaleDataset, NNmodel=NNmodel, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse)
   )

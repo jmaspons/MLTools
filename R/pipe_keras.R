@@ -258,7 +258,17 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
 
     ## Variable importance
     if (repVi > 0){
-      resi$variableImportance<- variableImportance_keras(model=modelNN, data=validate_data, y=validate_labels, repVi=repVi)
+      variable_groups<- NULL
+      if (length(predVars.cat) > 0){
+        # Join variable importance for predictors from the same categorical variable
+        variable_groups<- lapply(predVars.cat, function(x){
+          grep(paste0("^", x), colnames(validate_data), value=TRUE)
+        })
+        variable_groups<- setNames(variable_groups, nm=predVars.cat)
+        predVarsNumOri<- setdiff(predVars, predVars.catBin)
+        variable_groups<- c(setNames(as.list(predVarsNumOri), nm=predVarsNumOri), variable_groups)
+      }
+      resi$variableImportance<- variableImportance_keras(model=modelNN, data=validate_data, y=validate_labels, repVi=repVi, variable_groups=variable_groups)
     }
 
     ## Explain model

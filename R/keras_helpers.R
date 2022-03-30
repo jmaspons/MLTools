@@ -33,9 +33,10 @@ performance_keras<- function(modelNN, test_data, test_labels, batch_size, sample
 }
 
 
-variableImportance_keras<- function(model, data, y, repVi=5, perm_dim=NULL, comb_dims=FALSE){
+variableImportance_keras<- function(model, data, y, repVi=5, variable_groups=NULL, N=NULL, perm_dim=NULL, comb_dims=FALSE){
   if (repVi > 0){
-    vi<- ingredients::feature_importance(x=model, data=data, y=y, B=repVi, perm_dim=perm_dim, comb_dims=comb_dims, predict_function=stats::predict)
+    vi<- ingredients::feature_importance(x=model, data=data, y=y, B=repVi, variable_groups=variable_groups,
+                                         N=N, perm_dim=perm_dim, comb_dims=comb_dims, predict_function=stats::predict)
     # vi[, "permutation" == 0] -> average; vi[, "permutation" > 0] -> replicates
     vi<- stats::reshape(as.data.frame(vi)[vi[, "permutation"] > 0, c("variable", "dropout_loss", "permutation")], timevar="permutation", idvar="variable", direction="wide")
     vi<- structure(as.matrix(vi[, -1]),

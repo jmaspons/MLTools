@@ -13,7 +13,7 @@
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.
 #' @param perm_dim dimension to perform the permutations to calculate the importance of the variables (data dimensions [case, time, variable]).
 #' If \code{perm_dim = 2:3}, it calculates the importance for each combination of the 2nd and 3rd dimensions.
-#' @param comb_dims if \code{TRUE}, do the permutations for each combination of the levels of the variables from 2nd and 3rd dimensions for input data with 3 dimensions. By default \code{FALSE}.
+#' @param comb_dims variable importance calculations, if \code{TRUE}, do the permutations for each combination of the levels of the variables from 2nd and 3rd dimensions for input data with 3 dimensions. By default \code{FALSE}.
 #' @param crossValStrategy \code{Kfold} or \code{bootstrap}.
 #' @param replicates number of replicates when \code{crossValStrategy="bootstrap"}.
 #' @param k number of data partitions when \code{crossValStrategy="Kfold"}.
@@ -332,8 +332,33 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
     ## TODO: fix Explain model incorrect number of dimensions. Perhaps not ready for 3d data? ----
 
     if (repVi > 0){
+      variable_groups<- NULL
+      if (length(predVars.cat) > 0){
+        # Join variable importance for predictors from the same categorical variable
+        v_groups.static<- lapply(predVars.cat, function(x){
+          list(grep(paste0("^", x), dimnames(validate_data$Static_input)$var, value=TRUE))
+        })
+        v_groups.static<- setNames(v_groups.static, nm=predVars.cat)
+        staticNumOri<- setdiff(staticVars, predVars.catBin)
+        v_groups.static<- c(setNames(as.list(staticNumOri), nm=staticNumOri), v_groups.static)
+
+        if (comb_dims){
+          v_groups.ts <- expand.grid(dimnames(validate_data$TS_input)[-1], stringsAsFactors=FALSE, KEEP.OUT.ATTRS=FALSE) # All combinations for all dimensions in a dataset
+          rownames(v_groups.ts) <- apply(v_groups.ts, 1, function(v) paste(v, collapse="|"))
+          v_groups.ts <- split(v_groups.ts, rownames(v_groups.ts))
+          v_groups.ts <- lapply(v_groups.ts, as.list)
+        } else {
+          v_groups.ts<- mapply(function(dimVar, dimNames) {
+            v<- lapply(dimVar, function(v) setNames(list(v), dimNames))
+            setNames(v, nm = dimVar)
+          }, dimVar=dimnames(validate_data$TS_input)[-1], dimNames=names(dimnames(validate_data$TS_input))[-1], SIMPLIFY=FALSE)
+          v_groups.ts<- do.call(c, v_groups.ts)
+        }
+
+        variable_groups<- list(TS_input=v_groups.ts, Static_input=v_groups.static)
+      }
       resi$variableImportance<- variableImportance_keras(model=modelNN, data=validate_data, y=validate_labels,
-                                                         repVi=repVi, perm_dim=perm_dim, comb_dims=comb_dims)
+                                                         repVi=repVi, variable_groups=variable_groups, perm_dim=perm_dim, comb_dims=comb_dims)
     }
 
     if (variableResponse | DALEXexplainer){
