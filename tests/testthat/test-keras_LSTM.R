@@ -1,7 +1,5 @@
 context("LSTM_keras")
 
-tensorflow::tf$get_logger()$setLevel("ERROR")
-
 df<- data.frame(id=rep(LETTERS[1:10], each=5), static=rep(1:10, each=5), time=rep(1:5, times=5))
 df.cat<- data.frame(id=LETTERS[1:10], cat1=rep(LETTERS[1:5], times=2), cat2=letters[1:10])
 df<- merge(df, df.cat)
@@ -57,14 +55,11 @@ variableResponse=FALSE
 
 
 test_that("keras_LSTM works", {
-  tensorflow::tf$get_logger()$setLevel("ERROR")
   result<- list()
 
   # future::plan(future::transparent)
   future::plan(future::multisession)
   # future::futureSessionInfo()
-  # f<- future::future(tensorflow::tf$get_logger()$setLevel("ERROR"))
-  # future::value(f)
   system.time(result$resp1summarizedPred<- pipe_keras_timeseries(df=df, predInput=predInput, responseVars=responseVars, caseClass=caseClass, idVars=idVars, weight=weight,
                                                                  timevar=timevar, responseTime=responseTime, regex_time=regex_time, staticVars=staticVars,
                                                                  repVi=repVi, perm_dim=perm_dim, comb_dims=comb_dims crossValStrategy=crossValStrategy[1], k=k, replicates=replicates, crossValRatio=crossValRatio,
@@ -157,7 +152,6 @@ test_that("keras_LSTM works", {
 
 
 # test_that("keras_LSTM predict with raster", {
-#   tensorflow::tf$get_logger()$setLevel("ERROR")
 #   predInputR<- raster::raster(nrows=4, ncols=6)
 #   predInputR<- raster::stack(lapply(varScale, function(i){
 #     raster::setValues(predInputR, runif(raster::ncell(predInputR)) * i)
@@ -220,7 +214,6 @@ test_that("keras_LSTM works", {
 #
 #
 # test_that("Future plans work with keras_LSTM", {
-#   tensorflow::tf$get_logger()$setLevel("ERROR")
 #   # options(future.globals.onReference = "error")
 # # Error in keras::reset_states(modelNN) : attempt to apply non-function
 # # Don't import/export python objects to/from code inside future for PSOCK and callR clusters
@@ -249,7 +242,6 @@ test_that("keras_LSTM works", {
 
 
 # test_that("scaleDataset with keras_LSTM", {
-#   tensorflow::tf$get_logger()$setLevel("ERROR")
 #   future::plan(future::multisession)
 #   system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi,
 #                                    batch_size=batch_size, scaleDataset=TRUE, hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main,
@@ -274,7 +266,6 @@ test_that("keras_LSTM works", {
 
 
 # test_that("keras_LSTM summary", {
-#   tensorflow::tf$get_logger()$setLevel("ERROR")
 #   future::plan(future::multisession)
 #   system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi,
 #                                    batch_size=batch_size, scaleDataset=TRUE, hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main,
