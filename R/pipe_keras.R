@@ -24,7 +24,7 @@
 #' @param tempdirRaster path to a directory to save temporal raster files.
 #' @param nCoresRaster number of cores used for parallelized raster cores. Use half of the available cores by default.
 #' @param verbose If > 0, print state and passed to keras functions
-#' @param ... extra parameters for \code\link[future.apply]{future_replicate}}. Better that user use future::plan?
+#' @param ... extra parameters for \code\link[future.apply]{future_replicate}} and \code\link[ingredients]{feature_importance}}.
 #'
 #' @return
 #' @export
@@ -268,7 +268,7 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
         predVarsNumOri<- setdiff(predVars, predVars.catBin)
         variable_groups<- c(setNames(as.list(predVarsNumOri), nm=predVarsNumOri), variable_groups)
       }
-      resi$variableImportance<- variableImportance_keras(model=modelNN, data=validate_data, y=validate_labels, repVi=repVi, variable_groups=variable_groups)
+      resi$variableImportance<- variableImportance_keras(model=modelNN, data=validate_data, y=validate_labels, repVi=repVi, variable_groups=variable_groups, ...)
     }
 
     ## Explain model
