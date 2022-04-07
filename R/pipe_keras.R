@@ -236,7 +236,7 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
     early_stop<- keras::callback_early_stopping(monitor="val_loss", patience=30)
 
     modelNN<- train_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels,
-                          test_data=test_data, test_labels=test_labels, epochs=epochs, batch_size=batch_size,
+                          test_data=test_data, test_labels=test_labels, epochs=epochs, batch_size=ifelse(batch_size %in% "all", nrow(train_data), batch_size),
                           sample_weight=sample_weight, callbacks=early_stop, verbose=verbose)
     if (verbose > 1) message("Training done")
 
@@ -251,7 +251,7 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
       sample_weight.validate<- NULL
     }
     resi$performance<- performance_keras(modelNN=modelNN, test_data=validate_data, test_labels=validate_labels,
-                                         batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size),
+                                         batch_size=ifelse(batch_size %in% "all", nrow(validate_data), batch_size),
                                          sample_weight=sample_weight.validate, verbose=verbose)
 
     if (verbose > 1) message("Performance analyses done")
@@ -268,7 +268,9 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
         predVarsNumOri<- setdiff(predVars, predVars.catBin)
         variable_groups<- c(setNames(as.list(predVarsNumOri), nm=predVarsNumOri), variable_groups)
       }
-      resi$variableImportance<- variableImportance_keras(model=modelNN, data=validate_data, y=validate_labels, repVi=repVi, variable_groups=variable_groups, ...)
+      resi$variableImportance<- variableImportance_keras(model=modelNN, data=validate_data, y=validate_labels, repVi=repVi,
+                                                         batch_size=ifelse(batch_size %in% "all", nrow(validate_data), batch_size),
+                                                         variable_groups=variable_groups, ...)
     }
 
     ## Explain model

@@ -1,5 +1,5 @@
 
-train_keras<- function(modelNN, train_data, train_labels, test_data, test_labels, epochs, batch_size, sample_weight=NULL, callbacks=NULL, verbose=0){
+train_keras<- function(modelNN, train_data, train_labels, test_data, test_labels, epochs, batch_size=NULL, sample_weight=NULL, callbacks=NULL, verbose=0){
   if (is.null(sample_weight) | length(sample_weight) == 0){
     validation_data<- list(test_data, test_labels)
     sample_weight<- NULL
@@ -11,7 +11,7 @@ train_keras<- function(modelNN, train_data, train_labels, test_data, test_labels
   history<- keras::fit(object=modelNN,
                 x=train_data,
                 y=train_labels,
-                batch_size=ifelse(batch_size %in% "all", nrow(train_data), batch_size),
+                batch_size=batch_size,
                 epochs=epochs,
                 verbose=verbose,
                 callbacks=callbacks,
@@ -24,19 +24,19 @@ train_keras<- function(modelNN, train_data, train_labels, test_data, test_labels
 
 
 # @importFrom caret postResample sample_weight
-performance_keras<- function(modelNN, test_data, test_labels, batch_size, sample_weight=NULL, verbose=0){
+performance_keras<- function(modelNN, test_data, test_labels, batch_size=NULL, sample_weight=NULL, verbose=0){
   perf<- keras::evaluate(object=modelNN, x=test_data, y=test_labels, batch_size=batch_size, verbose=verbose, sample_weight=sample_weight)
-  perfCaret<- caret::postResample(pred=stats::predict(modelNN, test_data), obs=test_labels) # No weighting
+  perfCaret<- caret::postResample(pred=stats::predict(modelNN, test_data, batch_size=batch_size), obs=test_labels) # No weighting
 
   out<- data.frame(as.list(perf), as.list(perfCaret))
   return(out)
 }
 
 
-variableImportance_keras<- function(model, data, y, repVi=5, variable_groups=NULL, perm_dim=NULL, comb_dims=FALSE, ...){
+variableImportance_keras<- function(model, data, y, repVi=5, variable_groups=NULL, perm_dim=NULL, comb_dims=FALSE, batch_size=NULL, ...){
   if (repVi > 0){
     vi<- ingredients::feature_importance(x=model, data=data, y=y, B=repVi, variable_groups=variable_groups,
-                                         perm_dim=perm_dim, comb_dims=comb_dims, predict_function=stats::predict, ...)
+                                         perm_dim=perm_dim, comb_dims=comb_dims, predict_function=stats::predict, batch_size=batch_size, ...)
     # vi[, "permutation" == 0] -> average; vi[, "permutation" > 0] -> replicates
     vi<- stats::reshape(as.data.frame(vi)[vi[, "permutation"] > 0, c("variable", "dropout_loss", "permutation")], timevar="permutation", idvar="variable", direction="wide")
     vi<- structure(as.matrix(vi[, -1]),
@@ -388,7 +388,7 @@ predict.Raster_keras<- function(object, model, filename="", fun=predict, ...) {
 #' @return
 #'
 #' @examples
-predict_keras<- function(modelNN, predInput, maskNA=NULL, scaleInput=FALSE, col_means_train, col_stddevs_train, batch_size, filename="", tempdirRaster=NULL, nCoresRaster=2){
+predict_keras<- function(modelNN, predInput, maskNA=NULL, scaleInput=FALSE, col_means_train, col_stddevs_train, batch_size=NULL, filename="", tempdirRaster=NULL, nCoresRaster=2){
   if (inherits(predInput, "Raster") & requireNamespace("raster", quietly=TRUE)){
     if (!is.null(tempdirRaster)){
       filenameScaled<- tempfile(tmpdir=tempdirRaster, fileext=".grd")

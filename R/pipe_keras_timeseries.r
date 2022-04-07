@@ -308,7 +308,8 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
 
     ## NOTE: all data must be matrix or array or a list of if the model has multiple inputs
     modelNN<- train_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels, test_data=test_data, test_labels=test_labels,
-                          epochs=epochs, batch_size=batch_size, sample_weight=sample_weight, callbacks=early_stop, verbose=verbose)
+                          epochs=epochs, batch_size=ifelse(batch_size %in% "all", nrow(train_data.3d), batch_size),
+                          sample_weight=sample_weight, callbacks=early_stop, verbose=verbose)
 
     if (verbose > 1) message("Training done")
 
@@ -323,7 +324,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
       sample_weight.validate<- NULL
     }
     resi$performance<- performance_keras(modelNN=modelNN, test_data=validate_data, test_labels=validate_labels,
-                                         batch_size=ifelse(batch_size %in% "all", nrow(test_data), batch_size),
+                                         batch_size=ifelse(batch_size %in% "all", nrow(validate_data.3d), batch_size),
                                          sample_weight=sample_weight.validate, verbose=verbose)
 
     if (verbose > 1) message("Performance analyses done")
@@ -358,7 +359,8 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
         variable_groups<- list(TS_input=v_groups.ts, Static_input=v_groups.static)
       }
       resi$variableImportance<- variableImportance_keras(model=modelNN, data=validate_data, y=validate_labels,
-                                                         repVi=repVi, variable_groups=variable_groups, perm_dim=perm_dim, comb_dims=comb_dims, ...)
+                                                         repVi=repVi, variable_groups=variable_groups, perm_dim=perm_dim, comb_dims=comb_dims,
+                                                         batch_size=ifelse(batch_size %in% "all", nrow(validate_data.3d), batch_size), ...)
     }
 
     if (variableResponse | DALEXexplainer){
@@ -392,8 +394,8 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
       if (inherits(predInput, "Raster")){
         batch_sizePred<- ifelse(batch_size %in% "all", raster::ncell(predInput), batch_size)
       } else {
-        batch_sizePred<- ifelse(batch_size %in% "all", nrow(predInput), batch_size)
         predInput.3d<- wideTo3Darray.ts(d=predInput.wide, vars=setdiff(predVars, staticVars), idCols=idVars)
+        batch_sizePred<- ifelse(batch_size %in% "all", nrow(predInput.3d), batch_size)
         if (is.null(maskNA)){
           predInput.3d<- predInput.3d[, setdiff(dimnames(predInput.3d)[[2]], responseTime), ]
         } else {
