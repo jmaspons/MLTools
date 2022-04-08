@@ -70,7 +70,7 @@ test_that("pipe_keras works", {
                                            baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
                                            crossValRatio=c(train=0.8, test=0.2), NNmodel=NNmodel, verbose=verbose))
 
-  tmp<- lapply(result, function(x) expect_s3_class(x, class="process_NN"))
+  tmp<- lapply(result, function(x) expect_s3_class(x, class="pipe_result.keras"))
 
   tmp<- lapply(result, function(x){
       expect_s3_class(x$performance, class="data.frame")
@@ -209,22 +209,22 @@ test_that("Future plans work", {
   suppressWarnings(future::plan(future::transparent))
   system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
                                   hidden_shape=hidden_shape, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
-  expect_s3_class(res, class="process_NN")
+  expect_s3_class(res, class="pipe_result.keras")
 
   future::plan(future::multicore)
   system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
                                   hidden_shape=hidden_shape, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
-  expect_s3_class(res, class="process_NN")
+  expect_s3_class(res, class="pipe_result.keras")
 
   future::plan(future.callr::callr(workers=3))
   system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
                                   hidden_shape=hidden_shape, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
-  expect_s3_class(res, class="process_NN")
+  expect_s3_class(res, class="pipe_result.keras")
 
   future::plan(future::sequential)
   system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
                                   hidden_shape=hidden_shape, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
-  expect_s3_class(res, class="process_NN")
+  expect_s3_class(res, class="pipe_result.keras")
 })
 
 
@@ -233,7 +233,7 @@ test_that("scaleDataset", {
   system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi,
                                    batch_size=batch_size, scaleDataset=TRUE, hidden_shape=hidden_shape,
                                    baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
-  expect_s3_class(res, class="process_NN")
+  expect_s3_class(res, class="pipe_result.keras")
 
   predInputR<- raster::raster(nrows=15, ncols=15)
   predInputR<- raster::stack(lapply(varScale, function(i){
@@ -251,7 +251,7 @@ test_that("scaleDataset", {
                         scaleDataset=TRUE,  hidden_shape=hidden_shape,
                         filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
                         DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
-  expect_s3_class(res, class="process_NN")
+  expect_s3_class(res, class="pipe_result.keras")
 })
 
 
@@ -262,7 +262,7 @@ test_that("summary", {
                                    baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
   sres<- summary(res)
-  expect_s3_class(sres, class="summary.process_NN")
+  expect_s3_class(sres, class="summary.pipe_result.keras")
   expect_type(sres, type="list")
 })
 

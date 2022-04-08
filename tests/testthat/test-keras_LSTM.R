@@ -88,7 +88,7 @@ test_that("keras_LSTM works", {
                                                    summarizePred=FALSE, scaleDataset=scaleDataset, NNmodel=NNmodel, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse)
   )
 
-  tmp<- lapply(result, function(x) expect_s3_class(x, class="process_NN"))
+  tmp<- lapply(result, function(x) expect_s3_class(x, class="pipe_result.keras"))
 
   tmp<- lapply(result, function(x){
       expect_s3_class(x$performance, class="data.frame")
@@ -222,22 +222,22 @@ test_that("keras_LSTM works", {
 #   suppressWarnings(future::plan(future::transparent))
 #   system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
 #                                   hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
-#   expect_s3_class(res, class="process_NN")
+#   expect_s3_class(res, class="pipe_result.keras")
 #
 #   future::plan(future::multicore)
 #   system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
 #                                   hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
-#   expect_s3_class(res, class="process_NN")
+#   expect_s3_class(res, class="pipe_result.keras")
 #
 #   future::plan(future.callr::callr(workers=3))
 #   system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
 #                                   hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
-#   expect_s3_class(res, class="process_NN")
+#   expect_s3_class(res, class="pipe_result.keras")
 #
 #   future::plan(future::sequential)
 #   system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
 #                                   hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
-#   expect_s3_class(res, class="process_NN")
+#   expect_s3_class(res, class="pipe_result.keras")
 # })
 
 
@@ -246,7 +246,7 @@ test_that("keras_LSTM works", {
 #   system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi,
 #                                    batch_size=batch_size, scaleDataset=TRUE, hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main,
 #                                    baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
-#   expect_s3_class(res, class="process_NN")
+#   expect_s3_class(res, class="pipe_result.keras")
 #
 #   predInputR<- raster::raster(nrows=15, ncols=15)
 #   predInputR<- raster::stack(lapply(varScale, function(i){
@@ -261,7 +261,7 @@ test_that("keras_LSTM works", {
 #                         scaleDataset=TRUE,  hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main,
 #                         filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
 #                         DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
-#   expect_s3_class(res, class="process_NN")
+#   expect_s3_class(res, class="pipe_result.keras")
 # })
 
 
@@ -272,7 +272,7 @@ test_that("keras_LSTM works", {
 #                                    baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 #
 #   sres<- summary(res)
-#   expect_s3_class(sres, class="summary.process_NN")
+#   expect_s3_class(sres, class="summary.pipe_result.keras")
 #   expect_type(sres, type="list")
 # })
 

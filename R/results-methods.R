@@ -1,6 +1,6 @@
-#' summary.process_NN
+#' summary.pipe_result.keras
 #'
-#' @param object a process_NN object
+#' @param object a pipe_result.keras object
 #' @param ... parameters to summarize_pred.Raster function.
 #'
 #' @return
@@ -8,7 +8,7 @@
 #'
 #' @examples
 # @importFrom coda mcmc mcmc.list
-summary.process_NN<- function(object, ...){
+summary.pipe_result.keras<- function(object, ...){
   out<- list()
 
   ## performance
@@ -84,13 +84,13 @@ summary.process_NN<- function(object, ...){
     out$prediction<- prediction.summary
   }
 
-  class(out)<- "summary.process_NN"
+  class(out)<- "summary.pipe_result.keras"
 
   return(out)
 }
 
 
-#' plotVI.process_NN
+#' plotVI.pipe_result.keras
 #'
 #' @param res
 #' @param vi
@@ -101,10 +101,10 @@ summary.process_NN<- function(object, ...){
 #'
 #' @examples
 # @import ggplot2
-plotVI.process_NN<- function(res, vi=c("ratio", "diff", "raw"), dispersion=c("sd", "se", "ci")){
+plotVI.pipe_result.keras<- function(res, vi=c("ratio", "diff", "raw"), dispersion=c("sd", "se", "ci")){
   vi<- match.arg(vi)
   dispersion<- match.arg(dispersion)
-  vi.summary<- summary.process_NN(res)$vi
+  vi.summary<- summary.pipe_result.keras(res)$vi
   viD<- switch(vi,
              ratio=vi.summary$viRatio.summary,
              diff=vi.summary$viDiff.summary,

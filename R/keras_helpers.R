@@ -100,7 +100,7 @@ variableResponse_keras<- function(explainer, variables=NULL, maxPoly=5){
 }
 
 
-gatherResults.process_NN<- function(res, summarizePred, filenameRasterPred, nCoresRaster){
+gatherResults.pipe_result.keras<- function(res, summarizePred, filenameRasterPred, nCoresRaster){
   names(res)<- paste0("rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res))))
 
   out<- list(performance=do.call(rbind, lapply(res, function(x) x$performance)))
@@ -240,7 +240,7 @@ gatherResults.process_NN<- function(res, summarizePred, filenameRasterPred, nCor
     })
   }
 
-  class(out)<- "process_NN"
+  class(out)<- "pipe_result.keras"
 
   return(out)
 }

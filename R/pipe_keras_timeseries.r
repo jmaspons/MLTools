@@ -434,7 +434,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
 
   if (verbose > 0) message("Iterations finished. Gathering results...")
 
-  out<- gatherResults.process_NN(res=res, summarizePred=summarizePred, filenameRasterPred=filenameRasterPred, nCoresRaster=nCoresRaster)
+  out<- gatherResults.pipe_result.keras(res=res, summarizePred=summarizePred, filenameRasterPred=filenameRasterPred, nCoresRaster=nCoresRaster)
 
   if (!is.null(predInput) & inherits(predInput, c("data.frame", "matrix")) & length(idVarsPred) > 0){
     ## Add idVars if exists
@@ -450,7 +450,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
     })
   }
 
-  class(out)<- "process_NN"
+  class(out)<- "pipe_result.keras"
 
   return(out)
 }
