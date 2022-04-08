@@ -6,7 +6,6 @@
 #' @param caseClass class of the samples used to weight cases. Column names or indexes on df, or a vector with the class for each rows in df.
 #' @param idVars id column names or indexes on df and/or predInput. Should be a unique identifier for a row in wide format. Deprecated default for compatibility c("x", "y")
 #' @param weight Optional array of the same length as \code{nrow(df)}, containing weights to apply to the model's loss for each sample.
-#' @param modelType type of neural network. "DNN" for Deep Neural Network, "LSTM" for Long Short-Term Memory (\code{input_data} with time-series in long format and a column for time. \code{timevar} parameter needed).
 #' @param timevar column name of the variable containing the time. Use with modelType = "LSTM".
 #' @param responseTime a \code{timevar} value used as a response var for \code{responseVars} or the default "LAST" for the last timestep available (\code{max(df[, timevar])}).
 #' @param regex_time regular expression matching the \code{timevar} values format.
@@ -80,6 +79,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
       warning("Time varying categorical variables not supported yet.")
       staticVars<- c(setdiff(staticVars, staticVars.cat), predVars.catBin)
     }
+    rm(df.catBin)
   }
 
   ## Select and sort predVars in predInput based on var names matching in df
@@ -95,6 +95,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
       if (length(predVars.cat) > 0){
         predInput.catBin<- stats::model.matrix(stats::as.formula(paste("~ -1 +", paste(predVars.cat, collapse="+"))), data=predInput)
         predInput<- cbind(predInput[, setdiff(colnames(predInput), predVars.cat)], predInput.catBin)
+        rm(predInput.catBin)
       }
     }
   }
@@ -289,6 +290,8 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
       train_data<- list(TS_input=train_data.3d, Static_input=train_data.static)
       test_data<- list(TS_input=test_data.3d, Static_input=test_data.static)
       validate_data<- list(TS_input=validate_data.3d, Static_input=validate_data.static)
+
+      rm(train_data.static, test_data.static, validate_data.static)
     } else {
       train_data<- train_data.3d
       test_data<- test_data.3d

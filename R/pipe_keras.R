@@ -60,6 +60,8 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
     predVars.catBin<- colnames(df.catBin)
     df<- cbind(df[, setdiff(colnames(df), predVars.cat)], df.catBin)
     predVars<- c(predVars.num, predVars.catBin)
+
+    rm(df.catBin)
   }
 
   ## Select and sort predVars in predInput based on var names matching in df
@@ -75,6 +77,8 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
       if (length(predVars.cat) > 0){
         predInput.catBin<- stats::model.matrix(stats::as.formula(paste("~ -1 +", paste(predVars.cat, collapse="+"))), data=predInput)
         predInput<- cbind(predInput[, setdiff(colnames(predInput), predVars.cat)], predInput.catBin)
+
+        rm(predInput.catBin)
       }
 
       selCols<- intersect(predVars, colnames(predInput))
