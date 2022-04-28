@@ -13,7 +13,7 @@ summary.pipe_result.keras<- function(object, ...){
 
   ## performance
   perf.summary<- lapply(object$performance, function(x){
-    x<- summary(coda::mcmc(x))
+    x<- summary(coda::mcmc(na.omit(x)))
     data.frame(t(c(x$statistics[c("Mean", "SD", "Naive SE")], x$quantiles)), check.names=FALSE)
   })
 
