@@ -375,7 +375,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
 
       ## Variable response
       if (variableResponse){
-        # warning("variableResponse not implemented for 3d arrays yet. TODO: fix ingredients::partial_dependence")
+        warning("variableResponse not implemented for 3d arrays yet. TODO: fix ingredients::partial_dependence")
         # resi$variableResponse<- variableResponse_keras(explainer)
       }
 

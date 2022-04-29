@@ -17,7 +17,8 @@ Imports:
     ingredients,
     keras,
     snow,
-    abind
+    abind,
+    methods
 Suggests:
     future.callr,
     testthat,
