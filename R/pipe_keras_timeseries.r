@@ -14,9 +14,9 @@
 #' If \code{perm_dim = 2:3}, it calculates the importance for each combination of the 2nd and 3rd dimensions.
 #' @param comb_dims variable importance calculations, if \code{TRUE}, do the permutations for each combination of the levels of the variables from 2nd and 3rd dimensions for input data with 3 dimensions. By default \code{FALSE}.
 #' @param crossValStrategy \code{Kfold} or \code{bootstrap}.
-#' @param replicates number of replicates when \code{crossValStrategy="bootstrap"}.
+#' @param replicates number of replicates for \code{crossValStrategy="bootstrap"} and \code{crossValStrategy="Kfold"} (\code{replicates * k-1}, 1 fold for validation).
 #' @param k number of data partitions when \code{crossValStrategy="Kfold"}.
-#' @param crossValRatio Proportion of the dataset used to train, test and validate the model when \code{crossValStrategy="bootstrap"}. Default to \code{c(train=0.6, test=0.2, validate=0.2)}. If there is only one value, will be taken as a train proportion and no validate set.
+#' @param crossValRatio Proportion of the dataset used to train, test and validate the model when \code{crossValStrategy="bootstrap"}. Default to \code{c(train=0.6, test=0.2, validate=0.2)}. If there is only one value, will be taken as a train proportion and the test set will be used for validation.
 #' @param hidden_shape.RNN number of neurons in the hidden layers of the Recursive Neural Network model (time series data).
 #' @param hidden_shape.static number of neurons in the hidden layers of the densely connected neural network model (static data).
 #' @param hidden_shape.main number of neurons in the hidden layers of the densely connected neural network model connecting static and time series data.
@@ -168,25 +168,24 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
 
   idxSetsL<- switch(crossValStrategy,
     bootstrap=bootstrap_train_test_validate(df.wide, replicates=replicates, ratio=crossValRatio, caseClass=caseClass, weight=weight),
-    Kfold=kFold_train_test_validate(d=df.wide, k=k, caseClass=caseClass, weight=weight)
+    Kfold=kFold_train_test_validate(d=df.wide, k=k, replicates=replicates, caseClass=caseClass, weight=weight)
   )
 
-  res<- future.apply::future_lapply(idxSetsL$replicates, function(idx.repli){
-    # TODO: TEST idx.repli<- idxSetsL$replicates[[1]]
+  res<- future.apply::future_lapply(idxSetsL, function(idx.repli){
     resi<- list()
     crossValSets<- lapply(idx.repli[intersect(c("trainset", "testset"), names(idx.repli))], function(x) df.wide[x, ])
 
     sample_weight<- idx.repli[intersect(c("weight.train", "weight.test"), names(idx.repli))]
 
     # If no validation set exist, use test set to check performance
-    if (length(idxSetsL$validateset) > 0){
-      validationSet<- df.wide[idxSetsL$validateset, ]
-      if (!is.null(idxSetsL$weight.validate)){
-        sample_weight$weight.validate<- idxSetsL$weight.validate
+    if (length(idx.repli$validateset) > 0){
+      validationSet<- df.wide[idx.repli$validateset, ]
+      if (!is.null(idx.repli$weight.validate)){
+        sample_weight$weight.validate<- idx.repli$weight.validate
       }
     } else {
       validationSet<- crossValSets$testset
-      if (!is.null(idxSetsL$weight.validate)){
+      if (!is.null(idx.repli$weight.test)){
         sample_weight$weight.validate<- sample_weight$weight.test
       }
     }

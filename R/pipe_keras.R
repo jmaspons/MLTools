@@ -8,9 +8,9 @@
 #' @param weight Optional array of the same length as \code{nrow(df)}, containing weights to apply to the model's loss for each sample.
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.
 #' @param crossValStrategy \code{Kfold} or \code{bootstrap}.
-#' @param replicates number of replicates when \code{crossValStrategy="bootstrap"}.
+#' @param replicates number of replicates for \code{crossValStrategy="bootstrap"} and \code{crossValStrategy="Kfold"} (\code{replicates * k-1}, 1 fold for validation).
 #' @param k number of data partitions when \code{crossValStrategy="Kfold"}.
-#' @param crossValRatio Proportion of the dataset used to train, test and validate the model when \code{crossValStrategy="bootstrap"}. Default to \code{c(train=0.6, test=0.2, validate=0.2)}. If there is only one value, will be taken as a train proportion and no validate set.
+#' @param crossValRatio Proportion of the dataset used to train, test and validate the model when \code{crossValStrategy="bootstrap"}. Default to \code{c(train=0.6, test=0.2, validate=0.2)}. If there is only one value, will be taken as a train proportion and the test set will be used for validation.
 #' @param hidden_shape number of neurons in the hidden layers of the neural network model.
 #' @param epochs parameter for \code\link[keras]{fit}}.
 #' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
@@ -148,10 +148,10 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
 
   idxSetsL<- switch(crossValStrategy,
     bootstrap=bootstrap_train_test_validate(df, replicates=replicates, ratio=crossValRatio, caseClass=caseClass, weight=weight),
-    Kfold=kFold_train_test_validate(d=df, k=k, caseClass=caseClass, weight=weight)
+    Kfold=kFold_train_test_validate(d=df, k=k, replicates=replicates, caseClass=caseClass, weight=weight)
   )
 
-  res<- future.apply::future_lapply(idxSetsL$replicates, function(idx.repli){
+  res<- future.apply::future_lapply(idxSetsL, function(idx.repli){
     resi<- list()
     # crossValSets<- splitdf(df, ratio=crossValRatio, sample_weight=sample_weight)
     crossValSets<- lapply(idx.repli[intersect(c("trainset", "testset"), names(idx.repli))], function(x) df[x, ])
@@ -166,17 +166,17 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
     # if (length(sample_weight) == 0) sample_weight<- NULL
 
     # If no validation set exist, use test set to check performance
-    if (length(idxSetsL$validateset) > 0){
-      validate_labels<- df[idxSetsL$validateset, responseVars, drop=FALSE]
-      validate_data<- df[idxSetsL$validateset, predVars, drop=FALSE]
-      if (!is.null(idxSetsL$weight.validate)){
-        sample_weight$weight.validate<- idxSetsL$weight.validate
+    if (length(idx.repli$validateset) > 0){
+      validate_labels<- df[idx.repli$validateset, responseVars, drop=FALSE]
+      validate_data<- df[idx.repli$validateset, predVars, drop=FALSE]
+      if (!is.null(idx.repli$weight.validate)){
+        sample_weight$weight.validate<- idx.repli$weight.validate
       }
     } else {
       validate_labels<- test_labels
       validate_data<- test_data
 
-      if (!is.null(idxSetsL$weight.validate)){
+      if (!is.null(idx.repli$weight.test)){
         sample_weight$weight.validate<- sample_weight$weight.test
       }
     }

@@ -79,58 +79,17 @@ bootstrap_train_test_validate<- function(d, replicates=10, ratio=c(train=0.6, te
     names(ratio)<- NULL
     ratio<- c(train=ratio, test=1 - ratio) # Assuming ratio is the train proportion and no validation set
   }
-  idxL0<- subset_train_test_validate(d, ratio=ratio, caseClass=caseClass, weight=weight)
-  out<- list(validateset=idxL0$validateset)
-  if (!is.null(idxL0$weight.validate)) out$weight.validate<- idxL0$weight.validate
 
-  out$replicates<- list(list(trainset=idxL0$trainset, testset=idxL0$testset))
-  if (!is.null(idxL0$weight.train)) out$replicates[[1]]<- c(out$replicates[[1]], list(weight.train=idxL0$weight.train, weight.test=idxL0$weight.test))
-
-  if (replicates == 1) return(out)
-
-  idx.boot<- sort(c(out$replicates[[1]]$trainset, out$replicates[[1]]$testset))
-  if (inherits(d, c("data.frame", "matrix"))){
-    d.boot<- d[idx.boot, ]
-  } else {
-    if (is.numeric(d) & length(d) == 1){ # atomic numeric
-      d.boot<- length(idx.boot)
-    } else{ # vector
-      d.boot<- d[idx.boot]
-    }
-  }
-
-
-  if (is.null(caseClass)){
-    caseClass.boot<- NULL
-  } else {
-    if (length(caseClass) == 1 & inherits(d, c("data.frame", "matrix"))){
-      classCol<- caseClass
-      caseClass.boot<- d.boot[, classCol]
-    } else if (length(caseClass) == 1 & is.atomic(d)){
-      if (caseClass == 1){
-        classCol<- NULL
-        caseClass.boot<- d.boot
-      }
-    } else if (length(caseClass) == sum(sapply(list(out$validateset, out$replicates[[1]]$trainset, out$replicates[[1]]$testset), length))){
-      classCol<- NULL
-      caseClass.boot<- caseClass[idx.boot]
-    } else {
-      stop("«caseClass» parameter should be an atomic value indicating a column of d, a vector with values for every case in d or 1 if d is a vector containing caseClass.")
-    }
-  }
-
-  reps<- replicate(replicates - 1, {
-    subset_train_test_validate(d.boot, ratio=ratio[c("train", "test")] / sum(ratio[c("train", "test")]), caseClass=caseClass.boot, weight=weight)
+  out<- replicate(replicates, {
+    subset_train_test_validate(d, ratio=ratio, caseClass=caseClass, weight=weight)
   }, simplify=FALSE)
-  reps<- lapply(reps, function(x) x[grep("validate", names(x), invert=TRUE)])
-  out$replicates<- c(out$replicates, reps)
 
   return(out)
 }
 
 
 ## K-fold cross validation ----
-kFold_train_test_validate<- function(d, k=5, caseClass=NULL, weight="class"){
+kFold_train_test_validate<- function(d, k=5, replicates=5, caseClass=NULL, weight="class"){
   if (inherits(d, c("data.frame", "matrix"))){
     index<- 1:nrow(d)
   } else {
@@ -162,7 +121,7 @@ kFold_train_test_validate<- function(d, k=5, caseClass=NULL, weight="class"){
   }
 
   subsetIdxL<- lapply(indexL, function(idx){
-    idx.idx<- caret::createFolds(rep("", length(idx)), k=k)
+    idx.idx<- caret::createMultiFolds(rep("", length(idx)), k=k, times=replicates)
     if (length(idx.idx) < k){ # class with n < k
       nMiss<- k - length(idx.idx)
       if (nMiss > length(idx.idx)){
@@ -171,43 +130,44 @@ kFold_train_test_validate<- function(d, k=5, caseClass=NULL, weight="class"){
       } else {
         resample<- sample(idx.idx, nMiss)
       }
-      idx.idx<- structure(c(idx.idx, resample), names=paste0("Fold", 1:k))
+      idx.idx<- structure(c(idx.idx, resample), names=paste0("Fold", 1:k, ".Rep", rep(1:replicates, each=k)))
     }
     lapply(idx.idx, function(x) idx[x])
   })
 
 
-  reps<- lapply(1:k, function(i){
+  ## Concatenate idx for each fold from different classes
+  reps<- lapply(seq_along(subsetIdxL[[1]]), function(i){
     sort(structure(do.call(c, lapply(subsetIdxL, function(x) x[[i]])), names=NULL))
   })
+  names(reps)<- names(subsetIdxL[[1]])
 
+  repsL<- split(reps, gsub("^Fold[0-9]+\\.", "", names(reps)))
 
-  idx.folds<- unlist(lapply(subsetIdxL, function(x) x[-1])) # reps[1] = validateset
-  reps<- lapply(reps, function(x){
-    testset<- x
-    trainset<- setdiff(idx.folds, testset)
-
-    return(list(trainset=trainset, testset=testset))
+  out<- lapply(repsL, function(x){
+    idx.folds<- unique(unlist(x[-1], use.names=FALSE))
+    validateset<- setdiff(idx.folds, x[[1]])
+    lapply(x[-1], function(y){
+      trainset<- setdiff(y, validateset)
+      testset<- setdiff(idx.folds, c(trainset, validateset))
+      list(trainset=trainset, testset=testset, validateset=validateset)
+    })
   })
 
-  out<- list(validateset=reps[[1]]$testset,
-             weight.validate=NULL, replicates=reps[-1])
+  out<- do.call(c, out)
+  names(out)<- gsub("^Rep[0-9]+\\.", "", names(out))
 
   if (!is.null(caseClass)){
     if (all(weight == "class")){
-      out$weight.validate<- weight.class(idx=out$validateset, caseClass=caseClass)
-
-      out$replicates<- lapply(out$replicates, function(x){
-          w<- lapply(x, function(y){
-              weight.class(idx=y, caseClass=caseClass)
+      out<- lapply(out, function(x){
+              w<- lapply(x, function(y){
+                  weight.class(idx=y, caseClass=caseClass)
+                })
+              names(w)<- paste0("weight.", gsub("set$", "", names(w)))
+              c(x, w)
             })
-          names(w)<- paste0("weight.", gsub("set$", "", names(w)))
-          c(x, w)
-        })
     }
-    # CHECK: sum(out$weight.validate);  sapply(out$replicates, function(x) sapply(x[grep("weight", names(x))], sum))
-  } else {
-    out$weight.validate<- NULL
+    # CHECK: sapply(out, function(x) sapply(x[grep("weight", names(x))], sum))
   }
 
   return(out)
