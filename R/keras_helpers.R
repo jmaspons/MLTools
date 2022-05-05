@@ -247,6 +247,36 @@ gatherResults.pipe_result.keras<- function(res, summarizePred, filenameRasterPre
 }
 
 
+#' @export
+print.pipe_result.keras<- function(x, ...){
+  cat("Keras pipe result with", nrow(x$performance), "replicates.\n")
+  cat("\nPerformance:\n")
+  print(x$performance, ...)
+  if (!is.null(x$vi)){
+    cat("\nVariable Importance:\n")
+    print(x$vi, ...)
+  }
+  if (!is.null(x$variableCoef)){
+    cat("\nLineal aproximations of the variables effects:\n")
+    print(x$variableCoef, ...)
+  }
+  if (!is.null(x$predictions)){
+    cat("\nPredictions for «predInput» data:\n")
+    print(x$predictions, ...)
+  }
+  if (!is.null(x$model)){
+    cat("Models saved in the results.\n")
+  }
+  if (!is.null(x$variableResponse)){
+    cat("Variable response from ingredients::partial_dependency available in the results.\n")
+  }
+  if (!is.null(x$DALEXexplainer)){
+    cat("DALEXexplainers saved in the results.\n")
+  }
+  invisible(x)
+}
+
+
 ## FUNCTIONS: Build and Train Neural Networks ----
 # 2 hidden layers
 build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128, mask=NULL){
