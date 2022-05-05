@@ -44,7 +44,7 @@ test_that("pipe_keras works", {
   future::plan(future::multisession)
   system.time(result$resp1summarizedPred<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars,
                                                          epochs=epochs, repVi=repVi,
-                                                         crossValStrategy=crossValStrategy[1], k=k,
+                                                         crossValStrategy=crossValStrategy[1], k=k, replicates=replicates,
                                                          batch_size=batch_size, hidden_shape=hidden_shape,
                                                          baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
                                                          crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
@@ -57,15 +57,15 @@ test_that("pipe_keras works", {
                                                          crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
   system.time(result$resp1<- pipe_keras(df=df, predInput=rev(predInput), responseVars=responseVars,
-                                           epochs=epochs, maskNA=maskNA, repVi=repVi,
-                                           crossValStrategy=crossValStrategy[2], replicates=replicates,
+                                           epochs=epochs, maskNA=maskNA, repVi=10,  # check names with 2 digits
+                                           crossValStrategy=crossValStrategy[2], replicates=10,  # check names with 2 digits
                                            hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE,
                                            baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
                                            crossValRatio=crossValRatio[1], NNmodel=NNmodel, verbose=verbose))
 
   system.time(result$resp2<- pipe_keras(df=df, predInput=rev(predInput), responseVars=1:2,
                                            epochs=epochs, repVi=repVi,
-                                           crossValStrategy=crossValStrategy[1], k=k,
+                                           crossValStrategy=crossValStrategy[1], k=k, replicates=replicates,
                                            hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE,
                                            baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
                                            crossValRatio=c(train=0.8, test=0.2), NNmodel=NNmodel, verbose=verbose))
@@ -75,7 +75,7 @@ test_that("pipe_keras works", {
   tmp<- lapply(result, function(x){
       expect_s3_class(x$performance, class="data.frame")
       reps<- nrow(x$performance)
-      expect_equal(rownames(x$performance), expected=paste0("rep", 1:reps))
+      expect_equal(rownames(x$performance), expected=paste0("rep", formatC(1:reps, format="d", flag="0", width=nchar(reps))))
     })
 
   tmp<- lapply(result, function(x){
@@ -86,8 +86,9 @@ test_that("pipe_keras works", {
   tmp<- lapply(result, function(x){
     expect_type(x$vi, type="double")
     reps<- nrow(x$performance)
-    expectedColnames<- paste0(rep(paste0("rep", formatC(1:reps, format="d", flag="0", width=nchar(reps))), each=repVi), "_",
-                              rep(paste0("perm", formatC(1:repVi, format="d", flag="0", width=nchar(repVi))), times=reps))
+    repsVi<- x$params$repVi
+    expectedColnames<- paste0(rep(paste0("rep", formatC(1:reps, format="d", flag="0", width=nchar(reps))), each=repsVi), "_",
+                              rep(paste0("perm", formatC(1:repsVi, format="d", flag="0", width=nchar(repsVi))), times=reps))
     expect_equal(colnames(x$vi), expected=expectedColnames)
   })
 
@@ -115,8 +116,8 @@ test_that("pipe_keras works", {
   expectedColnames<- c("Mean", "SD", "Naive SE", "2.5%", "25%", "50%", "75%", "97.5%")
   tmp<- expect_equal(colnames(result$resp1summarizedPred$predictions[[1]]), expected=expectedColnames)
   tmp<- expect_equal(unlist(unique(lapply(result$resp2summarizedPred$predictions, colnames))), expected=expectedColnames)
-  tmp<- expect_equal(colnames(result$resp1$predictions[[1]]), expected=paste0("rep", 1:nrow(result$resp1$performance)))
-  tmp<- expect_equal(unlist(unique(lapply(result$resp2$predictions, colnames))), expected=paste0("rep", 1:nrow(result$resp2$performance)))
+  tmp<- expect_equal(colnames(result$resp1$predictions[[1]]), expected=paste0("rep", formatC(1:nrow(result$resp1$performance), format="d", flag="0", width=nchar(nrow(result$resp1$performance)))))
+  tmp<- expect_equal(unlist(unique(lapply(result$resp2$predictions, colnames))), expected=paste0("rep", formatC(1:nrow(result$resp2$performance), format="d", flag="0", width=nchar(nrow(result$resp2$performance)))))
 
   tmp<- lapply(result, function(x){
     expect_type(x$model, type="list")
@@ -130,7 +131,7 @@ test_that("pipe_keras works", {
   tmp<- lapply(result, function(x){
     expect_type(x$DALEXexplainer, type="list")
     reps<- nrow(x$performance)
-    expect_equal(names(x$DALEXexplainer), expected=paste0("rep", 1:reps))
+    expect_equal(names(x$DALEXexplainer), expected=paste0("rep", formatC(1:reps, format="d", flag="0", width=nchar(reps))))
     lapply(x$DALEXexplainer, expect_s3_class, class="explainer")
   })
 })
@@ -158,7 +159,7 @@ test_that("Predict with raster", {
   filenameRasterPred<- paste0(tempdir(), "/testMap1.grd") # avoid overwrite
   resultR$resp1summarizedPred<- pipe_keras(df, predInput=predInputR,
                                               epochs=epochs, repVi=repVi,
-                                              crossValStrategy=crossValStrategy[1], k=k,
+                                              crossValStrategy=crossValStrategy[1], k=k, replicates=replicates,
                                               batch_size=batch_size, hidden_shape=hidden_shape, summarizePred=TRUE,
                                               filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
                                               DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
@@ -173,12 +174,13 @@ test_that("Predict with raster", {
 
   filenameRasterPred<- paste0(tempdir(), "/testMap3.grd") # avoid overwrite
   resultR$resp2summarizedPred<- pipe_keras(df, predInput=predInputR, responseVars=1:2, epochs=epochs, maskNA=maskNA, repVi=repVi,
-                        crossValStrategy=crossValStrategy[1], k=k, batch_size=batch_size, hidden_shape=hidden_shape,
+                        crossValStrategy=crossValStrategy[1], k=k, replicates=replicates, batch_size=batch_size, hidden_shape=hidden_shape,
                         summarizePred=TRUE, filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
                         DALEXexplainer=FALSE, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
 
   filenameRasterPred<- paste0(tempdir(), "/testMap4.grd") # avoid overwrite
-  resultR$resp2<- pipe_keras(df, predInput=predInputR, responseVars=1:2, epochs=epochs, repVi=repVi, replicates=replicates, batch_size=batch_size, hidden_shape=hidden_shape,
+  resultR$resp2<- pipe_keras(df, predInput=predInputR, responseVars=1:2, epochs=epochs, repVi=repVi, crossValStrategy=crossValStrategy[2], replicates=replicates,
+                         batch_size=batch_size, hidden_shape=hidden_shape,
                          summarizePred=FALSE, filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
                          DALEXexplainer=FALSE, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
 
@@ -207,22 +209,22 @@ test_that("Future plans work", {
 # https://cran.r-project.org/web/packages/future/vignettes/future-4-non-exportable-objects.html
 
   suppressWarnings(future::plan(future::transparent))
-  system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
+  system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi, batch_size=batch_size,
                                   hidden_shape=hidden_shape, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
   expect_s3_class(res, class="pipe_result.keras")
 
   future::plan(future::multicore)
-  system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
+  system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi, batch_size=batch_size,
                                   hidden_shape=hidden_shape, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
   expect_s3_class(res, class="pipe_result.keras")
 
   future::plan(future.callr::callr(workers=3))
-  system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
+  system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi, batch_size=batch_size,
                                   hidden_shape=hidden_shape, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
   expect_s3_class(res, class="pipe_result.keras")
 
   future::plan(future::sequential)
-  system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
+  system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi, batch_size=batch_size,
                                   hidden_shape=hidden_shape, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
   expect_s3_class(res, class="pipe_result.keras")
 })
@@ -230,7 +232,7 @@ test_that("Future plans work", {
 
 test_that("scaleDataset", {
   future::plan(future::multisession)
-  system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi,
+  system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi,
                                    batch_size=batch_size, scaleDataset=TRUE, hidden_shape=hidden_shape,
                                    baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
   expect_s3_class(res, class="pipe_result.keras")
@@ -247,7 +249,7 @@ test_that("scaleDataset", {
   df<- df[, names(predInputR)]
 
   filenameRasterPred<- paste0(tempdir(), "/testMapScaleDataset.grd") # avoid overwrite
-  res<- pipe_keras(df, predInput=predInputR, epochs=epochs, replicates=replicates, repVi=repVi, batch_size=batch_size,
+  res<- pipe_keras(df, predInput=predInputR, epochs=epochs, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi, batch_size=batch_size,
                         scaleDataset=TRUE,  hidden_shape=hidden_shape,
                         filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster, baseFilenameNN=baseFilenameNN,
                         DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose)
@@ -257,7 +259,7 @@ test_that("scaleDataset", {
 
 test_that("summary", {
   future::plan(future::multisession)
-  system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, replicates=replicates, repVi=repVi,
+  system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi,
                                    batch_size=batch_size, scaleDataset=TRUE, hidden_shape=hidden_shape,
                                    baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 

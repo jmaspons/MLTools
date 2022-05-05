@@ -437,6 +437,14 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
   if (verbose > 0) message("Iterations finished. Gathering results...")
 
   out<- gatherResults.pipe_result.keras(res=res, summarizePred=summarizePred, filenameRasterPred=filenameRasterPred, nCoresRaster=nCoresRaster)
+  out$params<- list(responseVars=responseVars, caseClass=caseClass, idVars=idVars, weight=weight,
+                    timevar=timevar, responseTime=responseTime, regex_time=regex_time, staticVars=staticVars, perm_dim=perm_dim, comb_dims=comb_dims,
+                    repVi=repVi, crossValStrategy=crossValStrategy, k=k, replicates=replicates, crossValRatio=crossValRatio,
+                    shapeNN=list(hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main),
+                    epochs=epochs, maskNA=maskNA, batch_size=batch_size,
+                    summarizePred=summarizePred, scaleDataset=scaleDataset, NNmodel=NNmodel, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
+                    baseFilenameNN=baseFilenameNN, filenameRasterPred=filenameRasterPred)
+  if (crossValStrategy != "Kfold") out$params$k<- NULL
 
   if (!is.null(predInput) & inherits(predInput, c("data.frame", "matrix")) & length(idVarsPred) > 0){
     ## Add idVars if exists
