@@ -144,14 +144,15 @@ gatherResults.pipe_result.keras<- function(res, summarizePred, filenameRasterPre
       maxDegree<- max(degrees)
 
       if (maxDegree > 0){
+        colNames<- c("intercept", paste0("b", 1:(maxDegree)), "adj.r.squared", "r.squared", "degree")
         if (length(unique(degrees)) > 1){
           # Add NA if varCoef elements have degree < maxDegree (different length)
           sel<- degrees < maxDegree
           varCoef[sel]<- lapply(varCoef[sel], function(x){
-                    c(x[1:(1 + x["degree"])], rep(NA_real_, maxDegree - x["degree"]), x[c("adj.r.squared", "r.squared", "degree")])
+                    structure(c(x[1:(1 + x["degree"])], rep(NA_real_, maxDegree - x["degree"]), x[c("adj.r.squared", "r.squared", "degree")]),
+                              names=colNames)
                   })
         }
-        colNames<- c("intercept", paste0("b", 1:(maxDegree)), "adj.r.squared", "r.squared", "degree")
       } else {
         colNames<- c("intercept", "adj.r.squared", "r.squared", "degree")
         varCoef<- lapply(varCoef, function(x){
@@ -159,7 +160,7 @@ gatherResults.pipe_result.keras<- function(res, summarizePred, filenameRasterPre
         })
       }
 
-      structure(do.call(rbind, varCoef),
+      structure(do.call(rbind, c(varCoef, list(deparse.level=0))),
                 dimnames=list(names(varCoef), colNames))## TODO: check translation response var from ingredients::partial_dependency()$`_label_`
 
     })

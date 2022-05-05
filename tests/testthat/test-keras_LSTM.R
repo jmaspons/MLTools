@@ -32,7 +32,7 @@ comb_dims<- FALSE
 crossValStrategy<- c("Kfold", "bootstrap")
 k<- 3
 replicates<- 2
-crossValRatio<- c(train=0.6, test=0.2, validate=0.2);
+crossValRatio<- c(train=0.6, test=0.2, validate=0.2)
 hidden_shape.RNN<- 8
 hidden_shape.static<- 8
 hidden_shape.main<- c(8, 8)
@@ -72,7 +72,7 @@ test_that("keras_LSTM works", {
                                                                  repVi=repVi, perm_dim=perm_dim, comb_dims=TRUE, crossValStrategy=crossValStrategy[2], replicates=replicates, crossValRatio=crossValRatio,
                                                                  hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main, epochs=epochs, maskNA=maskNA, batch_size=batch_size,
                                                                  summarizePred=TRUE, scaleDataset=scaleDataset, NNmodel=NNmodel, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse)
-                                                         )
+  )
 
   system.time(result$resp1<- pipe_keras_timeseries(df=df, predInput=predInput, responseVars=responseVars, caseClass=caseClass, idVars=idVars, weight=weight,
                                                    timevar=timevar, responseTime=responseTime, regex_time=regex_time, staticVars=staticVars,
@@ -104,8 +104,9 @@ test_that("keras_LSTM works", {
   tmp<- lapply(result, function(x){
     expect_type(x$vi, type="double")
     reps<- nrow(x$performance)
-    expectedColnames<- paste0(rep(paste0("rep", formatC(1:reps, format="d", flag="0", width=nchar(reps))), each=repVi), "_",
-                              rep(paste0("perm", formatC(1:repVi, format="d", flag="0", width=nchar(repVi))), times=reps))
+    repsVi<- x$params$repVi
+    expectedColnames<- paste0(rep(paste0("rep", formatC(1:reps, format="d", flag="0", width=nchar(reps))), each=repsVi), "_",
+                              rep(paste0("perm", formatC(1:repsVi, format="d", flag="0", width=nchar(repsVi))), times=reps))
     expect_equal(colnames(x$vi), expected=expectedColnames)
   })
 
@@ -130,8 +131,8 @@ test_that("keras_LSTM works", {
   expectedColnames<- c("Mean", "SD", "Naive SE", "2.5%", "25%", "50%", "75%", "97.5%")
   tmp<- expect_equal(colnames(result$resp1summarizedPred$predictions[[1]]), expected=expectedColnames)
   tmp<- expect_equal(unlist(unique(lapply(result$resp2summarizedPred$predictions, colnames))), expected=expectedColnames)
-  tmp<- expect_equal(colnames(result$resp1$predictions[[1]]), expected=paste0("rep", formatC(1:nrow(result$resp1$performance), format="d", flag="0", width=nchar(reps))))
-  tmp<- expect_equal(unlist(unique(lapply(result$resp2$predictions, colnames))), expected=paste0("rep", formatC(1:nrow(result$resp2$performance), format="d", flag="0", width=nchar(reps))))
+  tmp<- expect_equal(colnames(result$resp1$predictions[[1]]), expected=paste0("rep", formatC(1:nrow(result$resp1$performance), format="d", flag="0", width=nchar(nrow(result$resp1$performance)))))
+  tmp<- expect_equal(unlist(unique(lapply(result$resp2$predictions, colnames))), expected=paste0("rep", formatC(1:nrow(result$resp2$performance), format="d", flag="0", width=nchar(nrow(result$resp2$performance)))))
 
   tmp<- lapply(result, function(x){
     expect_type(x$model, type="list")

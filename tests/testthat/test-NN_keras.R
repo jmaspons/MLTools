@@ -46,28 +46,28 @@ test_that("pipe_keras works", {
                                                          epochs=epochs, repVi=repVi,
                                                          crossValStrategy=crossValStrategy[1], k=k, replicates=replicates,
                                                          batch_size=batch_size, hidden_shape=hidden_shape,
-                                                         baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
+                                                         baseFilenameNN=paste0(baseFilenameNN, "-resp1summarizedPred"), DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
                                                          crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
   system.time(result$resp2summarizedPred<- pipe_keras(df=df, predInput=predInput, responseVars=1:2,
                                                          epochs=epochs, maskNA=maskNA, repVi=repVi,
                                                          crossValStrategy=crossValStrategy[2], replicates=replicates,
                                                          batch_size=batch_size, hidden_shape=hidden_shape,
-                                                         baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
+                                                         baseFilenameNN=paste0(baseFilenameNN, "-resp2summarizedPred"), DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
                                                          crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
   system.time(result$resp1<- pipe_keras(df=df, predInput=rev(predInput), responseVars=responseVars,
                                            epochs=epochs, maskNA=maskNA, repVi=10,  # check names with 2 digits
                                            crossValStrategy=crossValStrategy[2], replicates=10,  # check names with 2 digits
                                            hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE,
-                                           baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
+                                           baseFilenameNN=paste0(baseFilenameNN, "-resp1"), DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
                                            crossValRatio=crossValRatio[1], NNmodel=NNmodel, verbose=verbose))
 
   system.time(result$resp2<- pipe_keras(df=df, predInput=rev(predInput), responseVars=1:2,
                                            epochs=epochs, repVi=repVi,
                                            crossValStrategy=crossValStrategy[1], k=k, replicates=replicates,
                                            hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE,
-                                           baseFilenameNN=baseFilenameNN, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
+                                           baseFilenameNN=paste0(baseFilenameNN, "-resp2"), DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
                                            crossValRatio=c(train=0.8, test=0.2), NNmodel=NNmodel, verbose=verbose))
 
   tmp<- lapply(result, function(x) expect_s3_class(x, class="pipe_result.keras"))
@@ -126,7 +126,7 @@ test_that("pipe_keras works", {
   })
   # dir(tempdir(), full.names=TRUE)
   expect_true(any(grepl(baseFilenameNN, dir(tempdir(), full.names=TRUE))))
-  expect_equal(sum(grepl(baseFilenameNN, dir(tempdir(), full.names=TRUE))), k - 1)
+  expect_equal(sum(grepl(baseFilenameNN, dir(tempdir(), full.names=TRUE))), sum(sapply(result, function(x) nrow(x$performance))))
 
   tmp<- lapply(result, function(x){
     expect_type(x$DALEXexplainer, type="list")
