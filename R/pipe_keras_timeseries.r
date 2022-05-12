@@ -70,6 +70,15 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
   if (length(predVars.cat) > 0){
     df.catBin<- stats::model.matrix(stats::as.formula(paste("~ -1 +", paste(predVars.cat, collapse="+"))), data=df)
     predVars.catBin<- colnames(df.catBin)
+    if (nrow(df) != nrow(df.catBin)){
+      catNA<- sapply(df[, predVars.cat, drop=FALSE], function(x) any(is.na(x)) )
+      catNA<- names(catNA)[catNA]
+      rmRows<- unique(unlist(lapply(catNA, function(x) which(is.na(df[, x])))))
+      df<- df[-rmRows, ]
+      df.catBin<- stats::model.matrix(stats::as.formula(paste("~ -1 +", paste(predVars.cat, collapse="+"))), data=df)
+      predVars.catBin<- colnames(df.catBin)
+      warning("NAs in categorical variables not allowed. Check vars: [", paste(catNA, collapse=", "), "]. Removed rows: [", paste(rmRows, collapse=", "), "].")
+    }
     df<- cbind(df[, setdiff(colnames(df), predVars.cat)], df.catBin)
     predVars<- c(predVars.num, predVars.catBin)
     staticVars.cat<- staticVars[staticVars %in% predVars.cat]
