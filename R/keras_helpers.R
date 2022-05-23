@@ -289,6 +289,9 @@ print.pipe_result.keras<- function(x, ...){
   if (!is.null(x$DALEXexplainer)){
     cat("DALEXexplainers saved in the results.\n")
   }
+  if (!is.null(x$save_validateset)){
+    cat("Validation set saved in the results.\n")
+  }
   invisible(x)
 }
 

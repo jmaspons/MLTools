@@ -27,6 +27,7 @@
 #' @param NNmodel if TRUE, return the serialized model with the result.
 #' @param DALEXexplainer if TRUE, return a explainer for the models from \code\link[DALEX]{explain}} function. It doesn't work with multisession future plans.
 #' @param variableResponse if TRUE, return aggregated_profiles_explainer object from \code\link[ingredients]{partial_dependency}} and the coefficients of the adjusted lineal model.
+#' @param save_validateset save the validateset (independent data not used for training).
 #' @param baseFilenameNN if no missing, save the NN in hdf5 format on this path with iteration appended.
 #' @param filenameRasterPred if no missing, save the predictions in a RasterBrick to this file.
 #' @param tempdirRaster path to a directory to save temporal raster files.
@@ -43,7 +44,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
                    timevar=NULL, responseTime="LAST", regex_time=".+", staticVars=NULL,
                    repVi=5, perm_dim=2:3, comb_dims=FALSE, crossValStrategy=c("Kfold", "bootstrap"), k=5, replicates=10, crossValRatio=c(train=0.6, test=0.2, validate=0.2),
                    hidden_shape.RNN=c(32, 32), hidden_shape.static=c(32, 32), hidden_shape.main=32, epochs=500, maskNA=NULL, batch_size="all",
-                   summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE, variableResponse=FALSE,
+                   summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE, variableResponse=FALSE, save_validateset=FALSE,
                    baseFilenameNN=NULL, filenameRasterPred=NULL, tempdirRaster=NULL, nCoresRaster=parallel::detectCores() %/% 2, verbose=0, ...){
   crossValStrategy<- match.arg(crossValStrategy)
   if (is.numeric(responseVars)){
@@ -446,8 +447,9 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
   if (verbose > 0) message("Iterations finished. Gathering results...")
 
   out<- gatherResults.pipe_result.keras(res=res, summarizePred=summarizePred, filenameRasterPred=filenameRasterPred, nCoresRaster=nCoresRaster)
-  out$params<- list(responseVars=responseVars, caseClass=caseClass, idVars=idVars, weight=weight,
-                    timevar=timevar, responseTime=responseTime, regex_time=regex_time, staticVars=staticVars, perm_dim=perm_dim, comb_dims=comb_dims,
+  out$params<- list(responseVars=responseVars, predVars=predVars, staticVars=staticVars, predVars.cat=predVars.cat,
+                    caseClass=caseClass, idVars=idVars, weight=weight,
+                    timevar=timevar, responseTime=responseTime, regex_time=regex_time, perm_dim=perm_dim, comb_dims=comb_dims,
                     repVi=repVi, crossValStrategy=crossValStrategy, k=k, replicates=replicates, crossValRatio=crossValRatio,
                     shapeNN=list(hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main),
                     epochs=epochs, maskNA=maskNA, batch_size=batch_size,
@@ -467,6 +469,10 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
       save_model_hdf5(keras::unserialize_model(out$model[[i]]), filepath=paste0(baseFilenameNN, "_", formatC(i, format="d", flag="0", width=nchar(length(res))), ".hdf5"),
                       overwrite=TRUE, include_optimizer=TRUE)
     })
+  }
+
+  if (save_validateset){
+    out$validateset<- list(validate_Y=validate_labels, validate_X=validate_data)
   }
 
   class(out)<- "pipe_result.keras"
