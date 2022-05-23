@@ -33,7 +33,23 @@ performance_keras<- function(modelNN, test_data, test_labels, batch_size=NULL, s
 }
 
 
-variableImportance_keras<- function(model, data, y, repVi=5, variable_groups=NULL, perm_dim=NULL, comb_dims=FALSE, batch_size=NULL, ...){
+#' Variable importance by permutations on predictors
+#'
+#' @param model
+#' @param data
+#' @param y
+#' @param repVi
+#' @param variable_groups
+#' @param perm_dim
+#' @param comb_dims
+#' @param batch_size
+#' @param ...
+#'
+#' @return
+#' @export
+#'
+#' @examples
+variableImportance<- function(model, data, y, repVi=5, variable_groups=NULL, perm_dim=NULL, comb_dims=FALSE, batch_size=NULL, ...){
   if (repVi > 0){
     vi<- feature_importance(x=model, data=data, y=y, B=repVi, variable_groups=variable_groups,
                                          perm_dim=perm_dim, comb_dims=comb_dims, predict_function=stats::predict, batch_size=batch_size, ...)

@@ -281,7 +281,7 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
         predVarsNumOri<- setdiff(predVars, predVars.catBin)
         variable_groups<- c(setNames(as.list(predVarsNumOri), nm=predVarsNumOri), variable_groups)
       }
-      resi$variableImportance<- variableImportance_keras(model=modelNN, data=validate_data, y=validate_labels, repVi=repVi,
+      resi$variableImportance<- variableImportance(model=modelNN, data=validate_data, y=validate_labels, repVi=repVi,
                                                          batch_size=ifelse(batch_size %in% "all", nrow(validate_data), batch_size),
                                                          variable_groups=variable_groups, ...)
     }

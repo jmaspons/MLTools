@@ -369,7 +369,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
 
         variable_groups<- list(TS_input=v_groups.ts, Static_input=v_groups.static)
       }
-      resi$variableImportance<- variableImportance_keras(model=modelNN, data=validate_data, y=validate_labels,
+      resi$variableImportance<- variableImportance(model=modelNN, data=validate_data, y=validate_labels,
                                                          repVi=repVi, variable_groups=variable_groups, perm_dim=perm_dim, comb_dims=comb_dims,
                                                          batch_size=ifelse(batch_size %in% "all", nrow(validate_data.3d), batch_size), ...)
     }
