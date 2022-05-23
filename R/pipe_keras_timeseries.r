@@ -355,10 +355,10 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
         v_groups.static<- c(setNames(as.list(staticNumOri), nm=staticNumOri), v_groups.static)
 
         if (comb_dims){
-          v_groups.ts <- expand.grid(dimnames(validate_data$TS_input)[-1], stringsAsFactors=FALSE, KEEP.OUT.ATTRS=FALSE) # All combinations for all dimensions in a dataset
-          rownames(v_groups.ts) <- apply(v_groups.ts, 1, function(v) paste(v, collapse="|"))
-          v_groups.ts <- split(v_groups.ts, rownames(v_groups.ts))
-          v_groups.ts <- lapply(v_groups.ts, as.list)
+          v_groups.ts<- expand.grid(dimnames(validate_data$TS_input)[-1], stringsAsFactors=FALSE, KEEP.OUT.ATTRS=FALSE) # All combinations for all dimensions in a dataset
+          rownames(v_groups.ts)<- apply(v_groups.ts, 1, function(v) paste(v, collapse="|"))
+          v_groups.ts<- split(v_groups.ts, rownames(v_groups.ts))
+          v_groups.ts<- lapply(v_groups.ts, as.list)
         } else {
           v_groups.ts<- mapply(function(dimVar, dimNames) {
             v<- lapply(dimVar, function(v) setNames(list(v), dimNames))
