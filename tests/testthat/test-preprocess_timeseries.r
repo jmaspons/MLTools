@@ -8,6 +8,10 @@ id.vars<- c("id_1", "id_2", "static")
 vars<- setdiff(names(dl), c(id.vars, "time"))
 vars.ts<- setdiff(names(dw), c(id.vars, "time"))
 
+dl.dup<- rbind(dl, dl[1:4, ])
+dl.dup$y[1:2]<- dl.dup$y[1:2] + 0.5
+dw.dup<- as.data.frame(data.table::dcast(data.table::as.data.table(dl.dup), id_1 + id_2 + static ~ time, fun.aggregate=mean, value.var=c("x", "y")))
+
 
 test_that("preprocess time series works with data.frame", {
   dl_w<- longToWide.ts(d=dl, timevar="time" , idCols=id.vars)
@@ -61,6 +65,24 @@ test_that("preprocess time series works with matrix", {
   al<- longTo3Darray.ts(d=dl, timevar="time", idCols=id.vars)
   aw<- wideTo3Darray.ts(d=dw, vars=vars, idCols=id.vars)
   dimnames(al)$t<- gsub(" ", "", dimnames(al)$t)
+
+  expect_equal(al, aw)
+  expect_equal(dim(al), c(4, 2, 2))
+  expect_equal(names(dimnames(al)), c("case", "t", "var"))
+})
+
+
+test_that("preprocess time series with duplicated idCols", {
+  dl_w<- longToWide.ts(d=dl.dup, timevar="time" , idCols=id.vars)
+  dw_l<- wideToLong.ts(d=dw.dup, timevar="time", vars=vars, idCols=id.vars)
+
+  expect_equal(dw.dup, dl_w)
+  # expect_equal(dl.dup, dw_l)
+  expect_s3_class(dl_w, "data.frame", exact=TRUE)
+  expect_s3_class(dw_l, "data.frame", exact=TRUE)
+
+  al<- longTo3Darray.ts(d=dl.dup, timevar="time", idCols=id.vars)
+  aw<- wideTo3Darray.ts(d=dw.dup, vars=vars, idCols=id.vars)
 
   expect_equal(al, aw)
   expect_equal(dim(al), c(4, 2, 2))

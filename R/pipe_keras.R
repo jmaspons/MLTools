@@ -4,7 +4,7 @@
 #' @param predInput a Raster or a data.frame with columns 1 and 2 corresponding to longitude and latitude + variables for the model
 #' @param responseVars response variables. Column names or indexes on df.
 #' @param caseClass class of the samples used to weight cases. Column names or indexes on df, or a vector with the class for each rows in df.
-#' @param idVars id column names or indexes on df and/or predInput. Deprecated default for compatibility c("x", "y")
+#' @param idVars id column names or indexes on df and/or predInput.
 #' @param weight Optional array of the same length as \code{nrow(df)}, containing weights to apply to the model's loss for each sample.
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.
 #' @param crossValStrategy \code{Kfold} or \code{bootstrap}.

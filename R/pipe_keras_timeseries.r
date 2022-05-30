@@ -4,7 +4,7 @@
 #' @param predInput a Raster or a data.frame with columns 1 and 2 corresponding to longitude and latitude + variables for the model
 #' @param responseVars response variables. Column names or indexes on df in wide format (eg. respVar_time).
 #' @param caseClass class of the samples used to weight cases. Column names or indexes on df, or a vector with the class for each rows in df.
-#' @param idVars id column names or indexes on df and/or predInput. Should be a unique identifier for a row in wide format. Deprecated default for compatibility c("x", "y")
+#' @param idVars id column names or indexes on df and/or predInput. Should be a unique identifier for a row in wide format, otherwise, values will be averaged.
 #' @param weight Optional array of the same length as \code{nrow(df)}, containing weights to apply to the model's loss for each sample.
 #' @param timevar column name of the variable containing the time. Use with modelType = "LSTM".
 #' @param responseTime a \code{timevar} value used as a response var for \code{responseVars} or the default "LAST" for the last timestep available (\code{max(df[, timevar])}).
