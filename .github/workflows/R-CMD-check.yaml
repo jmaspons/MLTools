@@ -25,4 +25,11 @@ jobs:
         with:
           extra-packages: rcmdcheck
 
+      - name: Install TensorFlow
+        run: |
+          Rscript -e "reticulate::install_miniconda()"
+          Rscript -e "remotes::install_local()"
+          Rscript -e "reticulate::conda_create('r-reticulate')"
+          Rscript -e "tensorflow::install_tensorflow()"
+
       - uses: r-lib/actions/check-r-package@v1
