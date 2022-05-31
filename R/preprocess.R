@@ -20,6 +20,16 @@ NULL
 #' @rdname transformTS
 #' @export
 longToWide.ts<- function(d, timevar, idCols=NULL){
+  fun.aggregate<- mean
+  if (inherits(d, "matrix")){
+    fun.aggregate<- function(x){
+      if (length(x) == 1) return(x)
+      else {
+        return(mean(as.numeric(x), na.rm=TRUE))
+      }
+    }
+  }
+
   if (!inherits(d, "data.table")){
     classOri<- class(d)
     d<- data.table::as.data.table(d)
@@ -41,7 +51,7 @@ longToWide.ts<- function(d, timevar, idCols=NULL){
     LHS<- "."
   }
   form<- paste0("`", paste(LHS, collapse="` + `"), "` ~ `", timevar, "`")
-  d<- data.table::dcast(d, formula=stats::formula(form), fun.aggregate=mean, value.var=vars)  # To wide format (var_time columns)
+  d<- data.table::dcast(d, formula=stats::formula(form), fun.aggregate=fun.aggregate, value.var=vars)  # To wide format (var_time columns)
   if (!"data.table" %in% classOri & "data.frame" %in% classOri){
     d<- as.data.frame(d)
   } else if ("matrix" %in% classOri){
