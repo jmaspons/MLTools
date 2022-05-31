@@ -15,7 +15,7 @@ Imports:
     caret,
     coda,
     DALEX,
-    data.table (>= 1.14.3),
+    data.table,
     future,
     future.apply,
     ggplot2,
