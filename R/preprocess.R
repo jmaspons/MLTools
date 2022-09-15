@@ -44,8 +44,6 @@ longToWide.ts<- function(d, timevar, idCols=NULL){
   }
 
   vars<- setdiff(colnames(d), c(idCols, timevar))
-  # timevals<- unique(d[, ..timevar])[[1]]
-  timevals<- unique(data.table:::`[.data.table`(x=d, , j=timevar, with=FALSE))[[1]] # without importing data.table functions
   LHS<- setdiff(idCols, timevar)
   if (is.null(LHS) | length(LHS) == 0){
     LHS<- "."
@@ -88,7 +86,7 @@ wideToLong.ts<- function(d, timevar, vars, idCols=NULL, regex_time=".+"){
                            "measure.vars=data.table:::measure(value.name, ", timevar, ", pattern=pattern))")
   d<- eval(parse(text=cmd))
 
-  rmRows<- apply(data.table:::`[.data.table`(x=d, , j=vars, with=FALSE, drop=FALSE), 1, function(x) all(is.na(x))) # missing timesteps
+  rmRows<- apply(data.table::`[.data.table`(x=d, , j=vars, with=FALSE, drop=FALSE), 1, function(x) all(is.na(x))) # missing timesteps
   d<- d[!rmRows, ]
 
   ## WARNING: timevar in results is character instead of the original, columns in different order (timevar between idCols and vars)
