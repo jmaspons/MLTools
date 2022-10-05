@@ -1,12 +1,12 @@
 #' Neural network model with keras
 #'
-#' @param df a data.frame with response variable in the first column
-#' @param predInput a Raster or a data.frame with columns 1 and 2 corresponding to longitude and latitude + variables for the model
-#' @param responseVars response variables. Column names or indexes on df in wide format (eg. respVar_time).
-#' @param caseClass class of the samples used to weight cases. Column names or indexes on df, or a vector with the class for each rows in df.
-#' @param idVars id column names or indexes on df and/or predInput. Should be a unique identifier for a row in wide format, otherwise, values will be averaged.
+#' @param df a \code{data.frame} with the data in a long format (time variable in the \code{timevar} column).
+#' @param predInput a \code{data.frame} with the input variables to make predictions. The columns names must match the names of \code{df} columns.
+#' @param responseVars response variables as column names or indexes on \code{df} in wide format (eg. respVar_time).
+#' @param caseClass class of the samples used to weight cases. Column names or indexes on \code{df}, or a vector with the class for each rows in \code{df}.
+#' @param idVars id column names or indexes on \code{df}. Should be a unique identifier for a row in wide format, otherwise, values will be averaged.
 #' @param weight Optional array of the same length as \code{nrow(df)}, containing weights to apply to the model's loss for each sample.
-#' @param timevar column name of the variable containing the time. Use with modelType = "LSTM".
+#' @param timevar column name of the variable containing the time.
 #' @param responseTime a \code{timevar} value used as a response var for \code{responseVars} or the default "LAST" for the last timestep available (\code{max(df[, timevar])}).
 #' @param regex_time regular expression matching the \code{timevar} values format.
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.
@@ -17,9 +17,9 @@
 #' @param replicates number of replicates for \code{crossValStrategy="bootstrap"} and \code{crossValStrategy="Kfold"} (\code{replicates * k-1}, 1 fold for validation).
 #' @param k number of data partitions when \code{crossValStrategy="Kfold"}.
 #' @param crossValRatio Proportion of the dataset used to train, test and validate the model when \code{crossValStrategy="bootstrap"}. Default to \code{c(train=0.6, test=0.2, validate=0.2)}. If there is only one value, will be taken as a train proportion and the test set will be used for validation.
-#' @param hidden_shape.RNN number of neurons in the hidden layers of the Recursive Neural Network model (time series data).
-#' @param hidden_shape.static number of neurons in the hidden layers of the densely connected neural network model (static data).
-#' @param hidden_shape.main number of neurons in the hidden layers of the densely connected neural network model connecting static and time series data.
+#' @param hidden_shape.RNN number of neurons in the hidden layers of the Recursive Neural Network model (time series data). Can be a vector with values for each hidden layer.
+#' @param hidden_shape.static number of neurons in the hidden layers of the densely connected neural network model (static data). Can be a vector with values for each hidden layer.
+#' @param hidden_shape.main number of neurons in the hidden layers of the densely connected neural network model connecting static and time series data. Can be a vector with values for each hidden layer.
 #' @param epochs parameter for \code\link[keras]{fit}}.
 #' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
 #' @param summarizePred if \code{TRUE}, return the mean, sd and se of the predictors. if \code{FALSE}, return the predictions for each replicate.
