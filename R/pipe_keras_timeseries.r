@@ -351,9 +351,9 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
         v_groups.static<- lapply(predVars.cat, function(x){
           list(grep(paste0("^", x), dimnames(validate_data$Static_input)$var, value=TRUE))
         })
-        v_groups.static<- setNames(v_groups.static, nm=predVars.cat)
+        v_groups.static<- stats::setNames(v_groups.static, nm=predVars.cat)
         staticNumOri<- setdiff(staticVars, predVars.catBin)
-        v_groups.static<- c(setNames(as.list(staticNumOri), nm=staticNumOri), v_groups.static)
+        v_groups.static<- c(stats::setNames(as.list(staticNumOri), nm=staticNumOri), v_groups.static)
 
         if (comb_dims){
           v_groups.ts<- expand.grid(dimnames(validate_data$TS_input)[-1], stringsAsFactors=FALSE, KEEP.OUT.ATTRS=FALSE) # All combinations for all dimensions in a dataset
@@ -362,8 +362,8 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
           v_groups.ts<- lapply(v_groups.ts, as.list)
         } else {
           v_groups.ts<- mapply(function(dimVar, dimNames) {
-            v<- lapply(dimVar, function(v) setNames(list(v), dimNames))
-            setNames(v, nm = dimVar)
+            v<- lapply(dimVar, function(v) stats::setNames(list(v), dimNames))
+            stats::setNames(v, nm = dimVar)
           }, dimVar=dimnames(validate_data$TS_input)[-1], dimNames=names(dimnames(validate_data$TS_input))[-1], SIMPLIFY=FALSE)
           v_groups.ts<- do.call(c, v_groups.ts)
         }

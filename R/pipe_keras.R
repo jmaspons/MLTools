@@ -278,9 +278,9 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
         variable_groups<- lapply(predVars.cat, function(x){
           grep(paste0("^", x), colnames(validate_data), value=TRUE)
         })
-        variable_groups<- setNames(variable_groups, nm=predVars.cat)
+        variable_groups<- stats::setNames(variable_groups, nm=predVars.cat)
         predVarsNumOri<- setdiff(predVars, predVars.catBin)
-        variable_groups<- c(setNames(as.list(predVarsNumOri), nm=predVarsNumOri), variable_groups)
+        variable_groups<- c(stats::setNames(as.list(predVarsNumOri), nm=predVarsNumOri), variable_groups)
       }
       resi$variableImportance<- variableImportance(model=modelNN, data=validate_data, y=validate_labels, repVi=repVi,
                                                          batch_size=ifelse(batch_size %in% "all", nrow(validate_data), batch_size),

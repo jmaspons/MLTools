@@ -328,7 +328,7 @@ feature_importance.multiinput <- function(x,
   ##  }
 
   if (is.null(perm_dim) | !is.null(variable_groups)) {
-    perm_dim <- lapply(data, function(d) setNames(2:length(dim(d)), nm=names(dimnames(d))[-1])) # all dims except first (rows) which correspond to cases
+    perm_dim <- lapply(data, function(d) stats::setNames(2:length(dim(d)), nm=names(dimnames(d))[-1])) # all dims except first (rows) which correspond to cases
   }
 
   # Variables for the dimensions to permute
@@ -374,8 +374,8 @@ feature_importance.multiinput <- function(x,
           vars <- lapply(vars, as.list)
         } else {
           vars <- mapply(function(dim_var, dim_names) {
-            v <- lapply(dim_var, function(v) setNames(list(v), dim_names))
-            setNames(v, nm = dim_var)
+            v <- lapply(dim_var, function(v) stats::setNames(list(v), dim_names))
+            stats::setNames(v, nm = dim_var)
           }, dim_var=vars, dim_names=names(vars), SIMPLIFY=FALSE)
           vars <- do.call(c, vars)
         }
