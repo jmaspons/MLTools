@@ -299,18 +299,21 @@ print.pipe_result.keras<- function(x, ...){
 ## FUNCTIONS: Build and Train Neural Networks ----
 # 2 hidden layers
 build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128, mask=NULL){
+  inputs<- layer_input(shape=input_shape, name="Input")
+
   if (is.null(mask)){
-    model<- keras_model_sequential() %>%
-      layer_dense(units=hidden_shape, activation="relu", input_shape=input_shape) %>%
-      layer_dense(units=hidden_shape, activation="relu") %>%
-      layer_dense(units=output_shape)
+    predictions<- inputs
   } else {
-    model<- keras_model_sequential() %>%
-      layer_masking(mask_value=mask, input_shape=input_shape) %>%
-      layer_dense(units=hidden_shape, activation="relu") %>%
-      layer_dense(units=hidden_shape, activation="relu") %>%
-      layer_dense(units=output_shape)
+    predictions<- inputs %>% layer_masking(mask_value=mask, input_shape=input_shape, name=paste0("mask_", mask))
   }
+
+  for (i in 1:length(hidden_shape)){
+    predictions<- predictions %>% layer_dense(units=hidden_shape[i], name=paste0("Dense_", i))
+  }
+
+  output<- layer_dense(units=output_shape, name="Output")
+
+  model<- keras_model(inputs=inputs, outputs=predictions %>% output)
   compile(model,
           loss="mse",
           optimizer=optimizer_rmsprop(),
@@ -330,20 +333,18 @@ build_modelLTSM<- function(input_shape.ts, input_shape.static=0, output_shape=1,
     predictions.static<- inputs.static
   } else {
     predictions.ts<- inputs.ts %>% layer_masking(mask_value=mask, input_shape=input_shape.ts, name=paste0("mask.ts_", mask))
-    predictions.static<- inputs.static %>% layer_masking(mask_value=mask, input_shape=input_shape.ts, name=paste0("mask.static_", mask))
+    predictions.static<- inputs.static %>% layer_masking(mask_value=mask, input_shape=input_shape.static, name=paste0("mask.static_", mask))
   }
 
-  predictions.ts<- inputs.ts
   for (i in 1:length(hidden_shape.RNN)){
     predictions.ts<- predictions.ts %>% layer_lstm(units=hidden_shape.RNN[i], name=paste0("LSTM_", i))
   }
 
   if (input_shape.static > 0){
-    predictions.static<- inputs.static
     for (i in 1:length(hidden_shape.static)){
       predictions.static<- predictions.static %>% layer_dense(units=hidden_shape.static[i], name=paste0("Dense_", i))
     }
-    output<- layer_concatenate(c(predictions.ts, predictions.static))
+    output<- layer_concatenate(c(predictions.ts, predictions.static), name="Concatenate_TS-Static")
   } else {
     output<- predictions.ts
   }
