@@ -26,17 +26,17 @@ timevar<- timevar
 responseTime<- "LAST"
 regex_time<- "[0-9]+"
 staticVars<- staticVars
-repVi<- 5
+repVi<- 2
 perm_dim<- list(2:3, 2)
 comb_dims<- FALSE
 crossValStrategy<- c("Kfold", "bootstrap")
 k<- 3
 replicates<- 2
 crossValRatio<- c(train=0.6, test=0.2, validate=0.2)
-hidden_shape.RNN<- 8
-hidden_shape.static<- 8
-hidden_shape.main<- c(8, 8)
-epochs<- 3
+hidden_shape.RNN<- 2
+hidden_shape.static<- 2
+hidden_shape.main<- 3
+epochs<- 2
 maskNA<- -999
 batch_size<- 1000
 summarizePred<- TRUE

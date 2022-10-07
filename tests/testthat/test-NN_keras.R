@@ -15,12 +15,12 @@ crossValStrategy<- c("Kfold", "bootstrap")
 crossValRatio<- c(train=0.6, test=0.2, validate=0.2)
 k<- 3
 idVars<- character()
-epochs<- 3
+epochs<- 2
 maskNA<- -999
 replicates<- 2
-repVi<- 3
+repVi<- 2
 summarizePred<- TRUE
-hidden_shape<- 3
+hidden_shape<- 2
 batch_size<- "all"
 scaleDataset<- FALSE
 tempdirRaster<- tempdir()
