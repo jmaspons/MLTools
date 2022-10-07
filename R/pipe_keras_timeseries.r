@@ -107,6 +107,8 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
         predInput<- cbind(predInput[, setdiff(colnames(predInput), predVars.cat)], predInput.catBin)
         rm(predInput.catBin)
       }
+
+      idVarsPred<- intersect(idVars, colnames(predInput))
     }
   }
 
@@ -459,6 +461,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
 
   if (!is.null(predInput) & inherits(predInput, c("data.frame", "matrix")) & length(idVarsPred) > 0){
     ## Add idVars if exists
+    predInputIdVars<- predInput[, idVarsPred, drop=FALSE]
     out$predictions<- lapply(out$predictions, function(x){
       cbind(predInputIdVars, x)
     })

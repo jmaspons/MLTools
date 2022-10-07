@@ -48,7 +48,7 @@ baseFilenameNN<- NULL
 filenameRasterPred<- NULL
 tempdirRaster<- NULL
 nCoresRaster<- parallel::detectCores() %/% 2
-verbose<- 2
+verbose<- 0
 
 ## TODO: FIX IT ----
 variableResponse=FALSE
@@ -126,13 +126,13 @@ test_that("keras_LSTM works", {
 
   tmp<- lapply(result, function(x){
     expect_type(x$predictions, type="list")
-    expect_type(x$predictions[[1]], type="double")
+    sapply(x$predictions, expect_s3_class, class="data.frame")
   })
-  expectedColnames<- c("Mean", "SD", "Naive SE", "2.5%", "25%", "50%", "75%", "97.5%")
+  expectedColnames<- c(idVars, "Mean", "SD", "Naive SE", "2.5%", "25%", "50%", "75%", "97.5%")
   tmp<- expect_equal(colnames(result$resp1summarizedPred$predictions[[1]]), expected=expectedColnames)
   tmp<- expect_equal(unlist(unique(lapply(result$resp2summarizedPred$predictions, colnames))), expected=expectedColnames)
-  tmp<- expect_equal(colnames(result$resp1$predictions[[1]]), expected=paste0("rep", formatC(1:nrow(result$resp1$performance), format="d", flag="0", width=nchar(nrow(result$resp1$performance)))))
-  tmp<- expect_equal(unlist(unique(lapply(result$resp2$predictions, colnames))), expected=paste0("rep", formatC(1:nrow(result$resp2$performance), format="d", flag="0", width=nchar(nrow(result$resp2$performance)))))
+  tmp<- expect_equal(colnames(result$resp1$predictions[[1]]), expected=c(idVars, paste0("rep", formatC(1:nrow(result$resp1$performance), format="d", flag="0", width=nchar(nrow(result$resp1$performance))))))
+  tmp<- expect_equal(unlist(unique(lapply(result$resp2$predictions, colnames))), expected=c(idVars, paste0("rep", formatC(1:nrow(result$resp2$performance), format="d", flag="0", width=nchar(nrow(result$resp2$performance))))))
 
   tmp<- lapply(result, function(x){
     expect_type(x$model, type="list")
