@@ -132,9 +132,11 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
         # predInputScaled<- raster::scale(predInput[[names(col_means_train)]], center=col_means_train, scale=col_stddevs_train)
         # predInputScaled<- raster::calc(predInput[[names(col_means_train)]], filename=filenameScaled, fun=function(x) scale(x, center=col_means_train, scale=col_stddevs_train))
         raster::beginCluster(n=nCoresRaster)
-        predInput[[names(col_means_train)]]<- raster::clusterR(predInput[[names(col_means_train)]], function(x, col_means_train, col_stddevs_train){
+        predInputScaled<- raster::clusterR(predInput[[names(col_means_train)]], function(x, col_means_train, col_stddevs_train){
                               raster::calc(x, fun=function(y) scale(y, center=col_means_train, scale=col_stddevs_train))
                             }, args=list(col_means_train=col_means_train, col_stddevs_train=col_stddevs_train), filename=filenameScaled)
+        predInput<- predInputScaled
+        names(predInput)<- names(col_means_train)
         if (!is.null(maskNA)){
           predInput<- raster::clusterR(predInput, function(x, maskNA){
                                 raster::calc(x, fun=function(y) { y[is.na(y)]<- maskNA; y } )

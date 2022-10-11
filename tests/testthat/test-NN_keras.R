@@ -40,7 +40,7 @@ verbose<- 0
 test_that("pipe_keras works", {
   result<- list()
 
-  # future::plan(future::transparent)
+  # future::plan(future::sequential, split=TRUE)
   future::plan(future::multisession)
   system.time(result$resp1summarizedPred<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars,
                                                          epochs=epochs, repVi=repVi,
@@ -208,7 +208,7 @@ test_that("Future plans work", {
 # Don't import/export python objects to/from code inside future for PSOCK and callR clusters
 # https://cran.r-project.org/web/packages/future/vignettes/future-4-non-exportable-objects.html
 
-  suppressWarnings(future::plan(future::sequential, split=TRUE))
+  future::plan(future::sequential, split=TRUE)
   system.time(res<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi, batch_size=batch_size,
                                   hidden_shape=hidden_shape, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
   expect_s3_class(res, class="pipe_result.keras")
