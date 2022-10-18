@@ -336,7 +336,7 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
 
   if (verbose > 0) message("Iterations finished. Gathering results...")
 
-  out<- gatherResults.pipe_result.keras(res=res, summarizePred=summarizePred, filenameRasterPred=filenameRasterPred, nCoresRaster=nCoresRaster)
+  out<- gatherResults.pipe_result.keras(res=res, summarizePred=summarizePred, filenameRasterPred=filenameRasterPred, nCoresRaster=nCoresRaster, repNames=names(idxSetsL))
   out$params<- list(responseVars=responseVars, predVars=predVars, predVars.cat=predVars.cat,
                     caseClass=caseClass, idVars=idVars, weight=weight,
                     repVi=repVi, crossValStrategy=crossValStrategy, k=k, replicates=replicates, crossValRatio=crossValRatio,
@@ -361,7 +361,7 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
   }
 
   if (save_validateset){
-    out$validateset<- list(validate_Y=validate_labels, validate_X=validate_data)
+    out$validateset<- lapply(idxSetsL, function(x) df[x$validateset, ])
   }
 
   class(out)<- "pipe_result.keras"

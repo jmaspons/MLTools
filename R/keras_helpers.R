@@ -116,8 +116,12 @@ variableResponse_keras<- function(explainer, variables=NULL, maxPoly=5){
 }
 
 
-gatherResults.pipe_result.keras<- function(res, summarizePred, filenameRasterPred, nCoresRaster){
-  names(res)<- paste0("rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res))))
+gatherResults.pipe_result.keras<- function(res, summarizePred, filenameRasterPred, nCoresRaster, repNames){
+  if (missing(repNames)){
+    names(res)<- paste0("rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res))))
+  } else {
+    names(res)<- repNames
+  }
 
   out<- list(performance=do.call(rbind, lapply(res, function(x) x$performance)))
   sc<- lapply(res, function(x) {

@@ -83,6 +83,7 @@ bootstrap_train_test_validate<- function(d, replicates=10, ratio=c(train=0.6, te
   out<- replicate(replicates, {
     subset_train_test_validate(d, ratio=ratio, caseClass=caseClass, weight=weight)
   }, simplify=FALSE)
+  names(out)<- paste0("rep", formatC(1:length(out), format="d", flag="0", width=nchar(length(out))))
 
   return(out)
 }

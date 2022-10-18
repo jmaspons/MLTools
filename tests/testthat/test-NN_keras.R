@@ -31,6 +31,7 @@ baseFilenameNN<- paste0(tempdir(), "/testNN")
 nCoresRaster<- 2
 variableResponse<- TRUE
 DALEXexplainer<- TRUE
+save_validateset<- TRUE
 NNmodel<- TRUE
 caseClass<- c(rep("A", 23), rep("B", 75), rep("C", 2))
 weight<- "class"
@@ -39,35 +40,34 @@ verbose<- 0
 
 test_that("pipe_keras works", {
   result<- list()
-
   # future::plan(future::sequential, split=TRUE)
   future::plan(future::multisession)
   system.time(result$resp1summarizedPred<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars,
                                                          epochs=epochs, repVi=repVi,
                                                          crossValStrategy=crossValStrategy[1], k=k, replicates=replicates,
                                                          batch_size=batch_size, hidden_shape=hidden_shape,
-                                                         baseFilenameNN=paste0(baseFilenameNN, "-resp1summarizedPred"), DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
+                                                         baseFilenameNN=paste0(baseFilenameNN, "-resp1summarizedPred"), DALEXexplainer=DALEXexplainer, variableResponse=variableResponse, save_validateset=save_validateset,
                                                          crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
   system.time(result$resp2summarizedPred<- pipe_keras(df=df, predInput=predInput, responseVars=1:2,
                                                          epochs=epochs, maskNA=maskNA, repVi=repVi,
                                                          crossValStrategy=crossValStrategy[2], replicates=replicates,
                                                          batch_size=batch_size, hidden_shape=hidden_shape,
-                                                         baseFilenameNN=paste0(baseFilenameNN, "-resp2summarizedPred"), DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
+                                                         baseFilenameNN=paste0(baseFilenameNN, "-resp2summarizedPred"), DALEXexplainer=DALEXexplainer, variableResponse=variableResponse, save_validateset=save_validateset,
                                                          crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
   system.time(result$resp1<- pipe_keras(df=df, predInput=rev(predInput), responseVars=responseVars,
                                            epochs=epochs, maskNA=maskNA, repVi=10,  # check names with 2 digits
                                            crossValStrategy=crossValStrategy[2], replicates=10,  # check names with 2 digits
                                            hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE,
-                                           baseFilenameNN=paste0(baseFilenameNN, "-resp1"), DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
+                                           baseFilenameNN=paste0(baseFilenameNN, "-resp1"), DALEXexplainer=DALEXexplainer, variableResponse=variableResponse, save_validateset=save_validateset,
                                            crossValRatio=crossValRatio[1], NNmodel=NNmodel, verbose=verbose))
 
   system.time(result$resp2<- pipe_keras(df=df, predInput=rev(predInput), responseVars=1:2,
                                            epochs=epochs, repVi=repVi,
                                            crossValStrategy=crossValStrategy[1], k=k, replicates=replicates,
                                            hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE,
-                                           baseFilenameNN=paste0(baseFilenameNN, "-resp2"), DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
+                                           baseFilenameNN=paste0(baseFilenameNN, "-resp2"), DALEXexplainer=DALEXexplainer, variableResponse=variableResponse, save_validateset=save_validateset,
                                            crossValRatio=c(train=0.8, test=0.2), NNmodel=NNmodel, verbose=verbose))
 
   tmp<- lapply(result, function(x) expect_s3_class(x, class="pipe_result.keras"))
@@ -75,7 +75,11 @@ test_that("pipe_keras works", {
   tmp<- lapply(result, function(x){
       expect_s3_class(x$performance, class="data.frame")
       reps<- nrow(x$performance)
-      expect_equal(rownames(x$performance), expected=paste0("rep", formatC(1:reps, format="d", flag="0", width=nchar(reps))))
+      if (x$params$crossValStrategy == "bootstrap"){
+        expect_equal(rownames(x$performance), expected=paste0("rep", formatC(1:reps, format="d", flag="0", width=nchar(reps))))
+      } else if (x$params$crossValStrategy == "Kfold") {
+        expect_equal(rownames(x$performance), expected=paste0("Fold", 2:k, ".Rep", rep(1:replicates, each=k-1))) # Fold2:k (Fold1 for validationset)
+      }
     })
 
   tmp<- lapply(result, function(x){
@@ -131,8 +135,23 @@ test_that("pipe_keras works", {
   tmp<- lapply(result, function(x){
     expect_type(x$DALEXexplainer, type="list")
     reps<- nrow(x$performance)
-    expect_equal(names(x$DALEXexplainer), expected=paste0("rep", formatC(1:reps, format="d", flag="0", width=nchar(reps))))
+    if (x$params$crossValStrategy == "bootstrap"){
+      expect_equal(names(x$DALEXexplainer), expected=paste0("rep", formatC(1:reps, format="d", flag="0", width=nchar(reps))))
+    } else if (x$params$crossValStrategy == "Kfold") {
+      expect_equal(names(x$DALEXexplainer), expected=paste0("Fold", 2:k, ".Rep", rep(1:replicates, each=k-1)))  # Fold2:k (Fold1 for validationset)
+    }
     lapply(x$DALEXexplainer, expect_s3_class, class="explainer")
+  })
+
+  tmp<- lapply(result, function(x){
+    expect_type(x$validateset, type="list")
+    reps<- nrow(x$performance)
+    if (x$params$crossValStrategy == "bootstrap"){
+      expect_equal(names(x$validateset), expected=paste0("rep", formatC(1:reps, format="d", flag="0", width=nchar(reps))))
+    } else if (x$params$crossValStrategy == "Kfold") {
+      expect_equal(names(x$validateset), expected=paste0("Fold", 2:k, ".Rep", rep(1:replicates, each=k-1)))  # Fold2:k (Fold1 for validationset)
+    }
+    lapply(x$validateset, expect_s3_class, class="data.frame")
   })
 })
 
