@@ -253,7 +253,7 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
 
     modelNN<- train_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels,
                           test_data=test_data, test_labels=test_labels, epochs=epochs, batch_size=ifelse(batch_size %in% "all", nrow(train_data), batch_size),
-                          sample_weight=sample_weight, callbacks=early_stop, verbose=verbose)
+                          sample_weight=sample_weight, callbacks=early_stop, verbose=max(c(0, verbose - 2)))
     if (verbose > 1) message("Training done")
 
     if (NNmodel){
@@ -268,7 +268,7 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
     }
     resi$performance<- performance_keras(modelNN=modelNN, test_data=validate_data, test_labels=validate_labels,
                                          batch_size=ifelse(batch_size %in% "all", nrow(validate_data), batch_size),
-                                         sample_weight=sample_weight.validate, verbose=verbose)
+                                         sample_weight=sample_weight.validate, verbose=max(c(0, verbose - 2)))
 
     if (verbose > 1) message("Performance analyses done")
 

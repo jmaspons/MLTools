@@ -323,7 +323,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
     ## NOTE: all data must be matrix or array or a list of if the model has multiple inputs
     modelNN<- train_keras(modelNN=modelNN, train_data=train_data, train_labels=train_labels, test_data=test_data, test_labels=test_labels,
                           epochs=epochs, batch_size=ifelse(batch_size %in% "all", nrow(train_data.3d), batch_size),
-                          sample_weight=sample_weight, callbacks=early_stop, verbose=verbose)
+                          sample_weight=sample_weight, callbacks=early_stop, verbose=max(c(0, verbose - 2)))
 
     if (verbose > 1) message("Training done")
 
@@ -339,7 +339,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
     }
     resi$performance<- performance_keras(modelNN=modelNN, test_data=validate_data, test_labels=validate_labels,
                                          batch_size=ifelse(batch_size %in% "all", nrow(validate_data.3d), batch_size),
-                                         sample_weight=sample_weight.validate, verbose=verbose)
+                                         sample_weight=sample_weight.validate, verbose=max(c(0, verbose - 2)))
 
     if (verbose > 1) message("Performance analyses done")
 
