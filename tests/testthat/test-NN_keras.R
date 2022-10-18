@@ -45,7 +45,7 @@ test_that("pipe_keras works", {
   system.time(result$resp1summarizedPred<- pipe_keras(df=df, predInput=predInput, responseVars=responseVars,
                                                          epochs=epochs, repVi=repVi,
                                                          crossValStrategy=crossValStrategy[1], k=k, replicates=replicates,
-                                                         batch_size=batch_size, hidden_shape=hidden_shape,
+                                                         batch_size=batch_size, hidden_shape=c(2, 2),
                                                          baseFilenameNN=paste0(baseFilenameNN, "-resp1summarizedPred"), DALEXexplainer=DALEXexplainer, variableResponse=variableResponse, save_validateset=save_validateset,
                                                          crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 

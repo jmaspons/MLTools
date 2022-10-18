@@ -301,7 +301,6 @@ print.pipe_result.keras<- function(x, ...){
 
 
 ## FUNCTIONS: Build and Train Neural Networks ----
-# 2 hidden layers
 build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128, mask=NULL){
   inputs<- layer_input(shape=input_shape, name="Input")
 
@@ -341,7 +340,11 @@ build_modelLTSM<- function(input_shape.ts, input_shape.static=0, output_shape=1,
   }
 
   for (i in 1:length(hidden_shape.RNN)){
-    predictions.ts<- predictions.ts %>% layer_lstm(units=hidden_shape.RNN[i], name=paste0("LSTM_", i))
+    if (i < length(hidden_shape.RNN)){
+      predictions.ts<- predictions.ts %>% layer_lstm(units=hidden_shape.RNN[i], name=paste0("LSTM_", i), return_sequences=TRUE)
+    } else {
+      predictions.ts<- predictions.ts %>% layer_lstm(units=hidden_shape.RNN[i], name=paste0("LSTM_", i))
+    }
   }
 
   if (input_shape.static > 0){

@@ -64,7 +64,7 @@ test_that("keras_LSTM works", {
   system.time(result$resp1summarizedPred<- pipe_keras_timeseries(df=df, predInput=predInput, responseVars=responseVars, caseClass=caseClass, idVars=idVars, weight=weight,
                                                                  timevar=timevar, responseTime=responseTime, regex_time=regex_time, staticVars=staticVars,
                                                                  repVi=repVi, perm_dim=perm_dim, comb_dims=comb_dims, crossValStrategy=crossValStrategy[1], k=k, replicates=replicates, crossValRatio=crossValRatio,
-                                                                 hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main, epochs=epochs, maskNA=maskNA, batch_size=batch_size,
+                                                                 hidden_shape.RNN=c(2, 2), hidden_shape.static=c(2, 2), hidden_shape.main=c(2, 2), epochs=epochs, maskNA=maskNA, batch_size=batch_size,
                                                                  summarizePred=TRUE, scaleDataset=scaleDataset, NNmodel=NNmodel, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse, save_validateset=save_validateset)
   )
 
