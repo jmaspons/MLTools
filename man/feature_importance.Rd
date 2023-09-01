@@ -40,15 +40,15 @@ feature_importance(x, ...)
 )
 }
 \arguments{
-\item{x}{an explainer created with function \code{DALEX::explain()}, or a model to be explained.}
+\item{x}{an explainer created with function \code{\link[DALEX:explain]{DALEX::explain()}}, or a model to be explained.}
 
 \item{...}{other parameters passed to \code{predict_function}.}
 
-\item{loss_function}{a function thet will be used to assess variable importance}
+\item{loss_function}{a function thet will be used to assess variable importance.}
 
 \item{type}{character, type of transformation that should be applied for dropout loss.
-"raw" results raw drop losses, "ratio" returns \code{drop_loss/drop_loss_full_model}
-while "difference" returns \code{drop_loss - drop_loss_full_model}}
+"raw" results raw drop losses, "ratio" returns \code{drop_loss / drop_loss_full_model}
+while "difference" returns \code{drop_loss - drop_loss_full_model}.}
 
 \item{n_sample}{alias for \code{N} held for backwards compatibility. number of observations that should be sampled for calculation of variable importance.}
 
@@ -63,20 +63,20 @@ By default \code{NULL}. If specified then it will override \code{variables},  \c
 \item{N}{number of observations that should be sampled for calculation of variable importance.
 If \code{NULL} then variable importance will be calculated on whole dataset (no sampling).}
 
-\item{label}{name of the model. By default it's extracted from the \code{class} attribute of the model}
+\item{label}{name of the model. By default it's extracted from the \code{class} attribute of the model.}
 
 \item{data}{validation dataset, will be extracted from \code{x} if it's an explainer. Can be a list of arrays for multiinput models.
-NOTE: It is best when target variable is not present in the \code{data}}
+NOTE: It is safer when target variable is not present in the \code{data}.}
 
-\item{y}{true labels for \code{data}, will be extracted from \code{x} if it's an explainer}
+\item{y}{true labels for \code{data}, will be extracted from \code{x} if it's an explainer.}
 
-\item{predict_function}{predict function, will be extracted from \code{x} if it's an explainer}
+\item{predict_function}{predict function, will be extracted from \code{x} if it's an explainer.}
 
 \item{perm_dim}{the dimensions to perform the permutations when \code{data} is a 3d array (e.g. [case, time, variable]).
 If \code{perm_dim = 2:3}, it calculates the importance for each variable in the 2nd and 3rd dimensions.
 For multiinput models, a list of dimensions in the same order than in  \code{data}. If  \code{NULL}, the default, take all dimensions except the first one (i.e. rows) which correspond to cases.}
 
-\item{comb_dims}{if \code{TRUE}, do the permutations for each combination of the levels of the variables from 2nd and 3rd dimensions for input data with 3 dimensions. By default \code{FALSE}}
+\item{comb_dims}{if \code{TRUE}, do the permutations for each combination of the levels of the variables from 2nd and 3rd dimensions for input data with 3 dimensions. By default, \code{FALSE}.}
 }
 \value{
 an object of the class \code{feature_importance}

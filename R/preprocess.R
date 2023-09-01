@@ -1,7 +1,7 @@
 
 #' Time series format transformations
 #'
-#' For data in wide format, the name of time varying columns follow the pattern \code{var_time}
+#' For data in wide format, the name of time varying columns follow the pattern `var_time`.
 #'
 #' @param d a data.frame or matrix.
 #' @param timevar column name for the time.
@@ -9,7 +9,7 @@
 #' @param idCols ids or no time varying columns. Works with column names and indexes.
 #' @param regex_time a regular expression for the time part of the variable names for data in wide format.
 #'
-#' @return the same data in a wide [var_time columns], long [time + vars columns] or a 3D array [samples, time, vars] format.
+#' @return the same data in a wide \[var_time columns\], long \[time + vars columns\] or a 3D array \[samples, time, vars\] format.
 #' @name transformTS
 # @importFrom data.table .N .I ':=' .SD
 # @examples

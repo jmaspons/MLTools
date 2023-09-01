@@ -31,5 +31,5 @@ longTo3Darray.ts(d, timevar, idCols = NULL)
 the same data in a wide [var_time columns], long [time + vars columns] or a 3D array [samples, time, vars] format.
 }
 \description{
-For data in wide format, the name of time varying columns follow the pattern \code{var_time}
+For data in wide format, the name of time varying columns follow the pattern \code{var_time}.
 }

@@ -1,32 +1,32 @@
 #' Neural network model with keras
 #'
-#' @param df a \code{data.frame} with the data in a long format (time variable in the \code{timevar} column).
-#' @param predInput a \code{data.frame} with the input variables to make predictions. The columns names must match the names of \code{df} columns.
-#' @param responseVars response variables as column names or indexes on \code{df} in wide format (eg. respVar_time).
-#' @param caseClass class of the samples used to weight cases. Column names or indexes on \code{df}, or a vector with the class for each rows in \code{df}.
-#' @param idVars id column names or indexes on \code{df}. Should be a unique identifier for a row in wide format, otherwise, values will be averaged.
-#' @param weight Optional array of the same length as \code{nrow(df)}, containing weights to apply to the model's loss for each sample.
+#' @param df a `data.frame` with the data in a long format (time variable in the `timevar` column).
+#' @param predInput a `data.frame` with the input variables to make predictions. The columns names must match the names of `df` columns.
+#' @param responseVars response variables as column names or indexes on `df` in wide format (eg. respVar_time).
+#' @param caseClass class of the samples used to weight cases. Column names or indexes on `df`, or a vector with the class for each rows in `df`.
+#' @param idVars id column names or indexes on `df`. Should be a unique identifier for a row in wide format, otherwise, values will be averaged.
+#' @param weight Optional array of the same length as `nrow(df)`, containing weights to apply to the model's loss for each sample.
 #' @param timevar column name of the variable containing the time.
-#' @param responseTime a \code{timevar} value used as a response var for \code{responseVars} or the default "LAST" for the last timestep available (\code{max(df[, timevar])}).
-#' @param regex_time regular expression matching the \code{timevar} values format.
+#' @param responseTime a `timevar` value used as a response var for `responseVars` or the default "LAST" for the last timestep available (`max(df[, timevar])`).
+#' @param regex_time regular expression matching the `timevar` values format.
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.
-#' @param perm_dim dimension to perform the permutations to calculate the importance of the variables (data dimensions [case, time, variable]).
-#' If \code{perm_dim = 2:3}, it calculates the importance for each combination of the 2nd and 3rd dimensions.
-#' @param comb_dims variable importance calculations, if \code{TRUE}, do the permutations for each combination of the levels of the variables from 2nd and 3rd dimensions for input data with 3 dimensions. By default \code{FALSE}.
-#' @param crossValStrategy \code{Kfold} or \code{bootstrap}.
-#' @param replicates number of replicates for \code{crossValStrategy="bootstrap"} and \code{crossValStrategy="Kfold"} (\code{replicates * k-1}, 1 fold for validation).
-#' @param k number of data partitions when \code{crossValStrategy="Kfold"}.
-#' @param crossValRatio Proportion of the dataset used to train, test and validate the model when \code{crossValStrategy="bootstrap"}. Default to \code{c(train=0.6, test=0.2, validate=0.2)}. If there is only one value, will be taken as a train proportion and the test set will be used for validation.
+#' @param perm_dim dimension to perform the permutations to calculate the importance of the variables (data dimensions \[case, time, variable\]).
+#' If `perm_dim = 2:3`, it calculates the importance for each combination of the 2nd and 3rd dimensions.
+#' @param comb_dims variable importance calculations, if `TRUE`, do the permutations for each combination of the levels of the variables from 2nd and 3rd dimensions for input data with 3 dimensions. By default `FALSE`.
+#' @param crossValStrategy `Kfold` or `bootstrap`.
+#' @param replicates number of replicates for `crossValStrategy="bootstrap"` and `crossValStrategy="Kfold"` (`replicates * k-1`, 1 fold for validation).
+#' @param k number of data partitions when `crossValStrategy="Kfold"`.
+#' @param crossValRatio Proportion of the dataset used to train, test and validate the model when `crossValStrategy="bootstrap"`. Default to `c(train=0.6, test=0.2, validate=0.2)`. If there is only one value, will be taken as a train proportion and the test set will be used for validation.
 #' @param hidden_shape.RNN number of neurons in the hidden layers of the Recursive Neural Network model (time series data). Can be a vector with values for each hidden layer.
 #' @param hidden_shape.static number of neurons in the hidden layers of the densely connected neural network model (static data). Can be a vector with values for each hidden layer.
 #' @param hidden_shape.main number of neurons in the hidden layers of the densely connected neural network model connecting static and time series data. Can be a vector with values for each hidden layer.
 #' @param epochs parameter for \code\link[keras]{fit}}.
 #' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
-#' @param summarizePred if \code{TRUE}, return the mean, sd and se of the predictors. if \code{FALSE}, return the predictions for each replicate.
-#' @param scaleDataset if \code{TRUE}, scale the whole dataset only once instead of the train set at each replicate. Optimize processing time for predictions with large rasters.
+#' @param summarizePred if `TRUE`, return the mean, sd and se of the predictors. if `FALSE`, return the predictions for each replicate.
+#' @param scaleDataset if `TRUE`, scale the whole dataset only once instead of the train set at each replicate. Optimize processing time for predictions with large rasters.
 #' @param NNmodel if TRUE, return the serialized model with the result.
 #' @param DALEXexplainer if TRUE, return a explainer for the models from \code\link[DALEX]{explain}} function. It doesn't work with multisession future plans.
-#' @param variableResponse if TRUE, return aggregated_profiles_explainer object from \code\link[ingredients]{partial_dependency}} and the coefficients of the adjusted lineal model.
+#' @param variableResponse if TRUE, return aggregated_profiles_explainer object from \code\link[ingredients]{partial_dependency}} and the coefficients of the adjusted linear model.
 #' @param save_validateset save the validateset (independent data not used for training).
 #' @param baseFilenameNN if no missing, save the NN in hdf5 format on this path with iteration appended.
 #' @param filenameRasterPred if no missing, save the predictions in a RasterBrick to this file.

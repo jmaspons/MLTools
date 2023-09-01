@@ -8,33 +8,33 @@
 #'
 #' Find more details in the \href{https://ema.drwhy.ai/featureImportance.html}{Feature Importance Chapter}.
 #'
-#' @param x an explainer created with function \code{DALEX::explain()}, or a model to be explained.
-#' @param data validation dataset, will be extracted from \code{x} if it's an explainer. Can be a list of arrays for multiinput models.
-#' NOTE: It is best when target variable is not present in the \code{data}
-#' @param predict_function predict function, will be extracted from \code{x} if it's an explainer
-#' @param y true labels for \code{data}, will be extracted from \code{x} if it's an explainer
-#' @param label name of the model. By default it's extracted from the \code{class} attribute of the model
-#' @param loss_function a function thet will be used to assess variable importance
-#' @param ... other parameters passed to \code{predict_function}.
+#' @param x an explainer created with function [DALEX::explain()], or a model to be explained.
+#' @param data validation dataset, will be extracted from `x` if it's an explainer. Can be a list of arrays for multiinput models.
+#' NOTE: It is safer when target variable is not present in the `data`.
+#' @param predict_function predict function, will be extracted from `x` if it's an explainer.
+#' @param y true labels for `data`, will be extracted from `x` if it's an explainer.
+#' @param label name of the model. By default it's extracted from the `class` attribute of the model.
+#' @param loss_function a function thet will be used to assess variable importance.
+#' @param ... other parameters passed to `predict_function`.
 #' @param type character, type of transformation that should be applied for dropout loss.
-#' "raw" results raw drop losses, "ratio" returns \code{drop_loss/drop_loss_full_model}
-#' while "difference" returns \code{drop_loss - drop_loss_full_model}
+#' "raw" results raw drop losses, "ratio" returns `drop_loss / drop_loss_full_model`
+#' while "difference" returns `drop_loss - drop_loss_full_model`.
 #' @param N number of observations that should be sampled for calculation of variable importance.
-#' If \code{NULL} then variable importance will be calculated on whole dataset (no sampling).
-#' @param n_sample alias for \code{N} held for backwards compatibility. number of observations that should be sampled for calculation of variable importance.
-#' @param B integer, number of permutation rounds to perform on each variable. By default it's \code{10}.
-#' @param variables vector of variables or a list of vectors for multiinput models. If \code{NULL} then variable importance will be tested for each variable from the \code{data} separately. By default \code{NULL}
+#' If `NULL` then variable importance will be calculated on whole dataset (no sampling).
+#' @param n_sample alias for `N` held for backwards compatibility. number of observations that should be sampled for calculation of variable importance.
+#' @param B integer, number of permutation rounds to perform on each variable. By default it's `10`.
+#' @param variables vector of variables or a list of vectors for multiinput models. If `NULL` then variable importance will be tested for each variable from the `data` separately. By default `NULL`
 #' @param variable_groups list of variables names vectors or a list of vectors for multiinput models. This is for testing joint variable importance.
-#' If \code{NULL} then variable importance will be tested separately for \code{variables}.
-#' By default \code{NULL}. If specified then it will override \code{variables},  \code{perm_dim} and \code{comb_dims}.
-#' @param perm_dim the dimensions to perform the permutations when \code{data} is a 3d array (e.g. [case, time, variable]).
-#' If \code{perm_dim = 2:3}, it calculates the importance for each variable in the 2nd and 3rd dimensions.
-#' For multiinput models, a list of dimensions in the same order than in  \code{data}. If  \code{NULL}, the default, take all dimensions except the first one (i.e. rows) which correspond to cases.
-#' @param comb_dims if \code{TRUE}, do the permutations for each combination of the levels of the variables from 2nd and 3rd dimensions for input data with 3 dimensions. By default \code{FALSE}
+#' If `NULL` then variable importance will be tested separately for `variables`.
+#' By default `NULL`. If specified then it will override `variables`,  `perm_dim` and `comb_dims`.
+#' @param perm_dim the dimensions to perform the permutations when `data` is a 3d array (e.g. [case, time, variable]).
+#' If `perm_dim = 2:3`, it calculates the importance for each variable in the 2nd and 3rd dimensions.
+#' For multiinput models, a list of dimensions in the same order than in  `data`. If  `NULL`, the default, take all dimensions except the first one (i.e. rows) which correspond to cases.
+#' @param comb_dims if `TRUE`, do the permutations for each combination of the levels of the variables from 2nd and 3rd dimensions for input data with 3 dimensions. By default, `FALSE`.
 #'
 #' @references Explanatory Model Analysis. Explore, Explain, and Examine Predictive Models. \url{https://ema.drwhy.ai/}
 #'
-#' @return an object of the class \code{feature_importance}
+#' @return an object of the class `feature_importance`
 #' @importFrom methods hasArg
 #'
 #' @examples
