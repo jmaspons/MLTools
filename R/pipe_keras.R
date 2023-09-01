@@ -342,7 +342,7 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
                     repVi=repVi, crossValStrategy=crossValStrategy, k=k, replicates=replicates, crossValRatio=crossValRatio,
                     shapeNN=list(hidden_shape=hidden_shape), epochs=epochs, maskNA=maskNA, batch_size=batch_size,
                     summarizePred=summarizePred, scaleDataset=scaleDataset, NNmodel=NNmodel, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
-                    baseFilenameNN=baseFilenameNN, filenameRasterPred=filenameRasterPred)
+                    save_validateset=save_validateset, baseFilenameNN=baseFilenameNN, filenameRasterPred=filenameRasterPred)
   if (crossValStrategy != "Kfold") out$params$k<- NULL
 
 

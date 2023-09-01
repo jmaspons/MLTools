@@ -456,7 +456,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
                     shapeNN=list(hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main),
                     epochs=epochs, maskNA=maskNA, batch_size=batch_size,
                     summarizePred=summarizePred, scaleDataset=scaleDataset, NNmodel=NNmodel, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
-                    baseFilenameNN=baseFilenameNN, filenameRasterPred=filenameRasterPred)
+                    save_validateset=save_validateset, baseFilenameNN=baseFilenameNN, filenameRasterPred=filenameRasterPred)
   if (crossValStrategy != "Kfold") out$params$k<- NULL
 
   if (!is.null(predInput) & inherits(predInput, c("data.frame", "matrix")) & length(idVarsPred) > 0){
