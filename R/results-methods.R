@@ -17,7 +17,7 @@ summary.pipe_result.keras<- function(object, ...){
     data.frame(t(c(x$statistics[c("Mean", "SD", "Naive SE")], x$quantiles)), check.names=FALSE)
   })
 
-  out$performance.summary<- do.call(rbind, perf.summary)
+  out$performance<- do.call(rbind, perf.summary)
 
 
   ## variable importance
@@ -83,6 +83,8 @@ summary.pipe_result.keras<- function(object, ...){
 
     out$prediction<- prediction.summary
   }
+
+  out$params<- object$params
 
   class(out)<- "summary.pipe_result.keras"
 
