@@ -27,7 +27,7 @@
 #' @param variable_groups list of variables names vectors or a list of vectors for multiinput models. This is for testing joint variable importance.
 #' If `NULL` then variable importance will be tested separately for `variables`.
 #' By default `NULL`. If specified then it will override `variables`,  `perm_dim` and `comb_dims`.
-#' @param perm_dim the dimensions to perform the permutations when `data` is a 3d array (e.g. [case, time, variable]).
+#' @param perm_dim the dimensions to perform the permutations when `data` is a 3d array (e.g. \[case, time, variable\]).
 #' If `perm_dim = 2:3`, it calculates the importance for each variable in the 2nd and 3rd dimensions.
 #' For multiinput models, a list of dimensions in the same order than in  `data`. If  `NULL`, the default, take all dimensions except the first one (i.e. rows) which correspond to cases.
 #' @param comb_dims if `TRUE`, do the permutations for each combination of the levels of the variables from 2nd and 3rd dimensions for input data with 3 dimensions. By default, `FALSE`.
