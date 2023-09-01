@@ -3,6 +3,7 @@
 S3method(feature_importance,default)
 S3method(feature_importance,explainer)
 S3method(print,pipe_result.keras)
+S3method(print,summary.pipe_result.keras)
 S3method(summary,pipe_result.keras)
 export(feature_importance)
 export(longTo3Darray.ts)
