@@ -123,17 +123,17 @@ kFold_train_test_validate<- function(d, k=5, replicates=5, caseClass=NULL, weigh
 
   subsetIdxL<- lapply(indexL, function(idx){
     idx.idx<- caret::createMultiFolds(rep("", length(idx)), k=k, times=replicates)
-    if (length(idx.idx) < k){ # class with n < k
-      nMiss<- k - length(idx.idx)
-      if (nMiss > length(idx.idx)){
-        resample<- sample(idx.idx, nMiss, replace=TRUE)
+    if (length(idx) < k){ # class with n < k
+      nMiss<- k * replicates - length(idx.idx)
+      if (nMiss > length(idx)){
+        resample<- as.list(sample(length(idx), nMiss, replace=TRUE))
         warning("The number of samples in a case class category is << k. Sampling with replacement.")
       } else {
-        resample<- sample(idx.idx, nMiss)
+        resample<- as.list(sample(length(idx), nMiss))
       }
       idx.idx<- structure(c(idx.idx, resample), names=paste0("Fold", 1:k, ".Rep", rep(1:replicates, each=k)))
     }
-    lapply(idx.idx, function(x) idx[x])
+    return(lapply(idx.idx, function(x) idx[x]))
   })
 
 
