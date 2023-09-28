@@ -1,34 +1,29 @@
 
-train_keras<- function(modelNN, train_data, train_labels, test_data, test_labels, epochs, batch_size=NULL, sample_weight=NULL, callbacks=NULL, verbose=0){
-  if (is.null(sample_weight) | length(sample_weight) == 0){
-    validation_data<- list(test_data, test_labels)
-    sample_weight<- NULL
-  } else {
-    validation_data<- list(test_data, test_labels, sample_weight$weight.test)
-    sample_weight<- sample_weight$weight.train
+# @importFrom caret postResample sample_weight
+performance_randomForest<- function(modelRF, test_data, test_labels, sample_weight=NULL, verbose=0){
+  perf<- list()
+  if (modelRF$type == "classification") {
+    if (!is.null(modelRF$confusion)) {
+      perf$error_rate<- modelRF$err.rate$OOB[modelRF$ntree] # * 100
+      if (!is.null(modelRF$test$err.rate)) {
+        perf$error_rate<- modelRF$test$err.rate$Test[modelRF$ntree] # * 100
+      }
+    }
+  }
+  if (modelRF$type == "regression") {
+    if (!is.null(modelRF$mse)) {
+      perf$mean_squared_error<- modelRF$mse[modelRF$ntree]
+      perf$rsq<- modelRF$rsq[modelRF$ntree]
+      if (!is.null(modelRF$test$mse)) {
+        perf$mean_squared_error<- modelRF$test$mse[length(modelRF$test$mse)]
+        perf$rsq<- modelRF$test$rsq[length(modelRF$test$rsq)]
+      }
+    }
   }
 
-  history<- keras::fit(object=modelNN,
-                x=train_data,
-                y=train_labels,
-                batch_size=batch_size,
-                epochs=epochs,
-                verbose=verbose,
-                callbacks=callbacks,
-                validation_data=validation_data,
-                sample_weight=sample_weight
-  )
+  perfCaret<- caret::postResample(pred=stats::predict(modelRF, test_data), obs=test_labels) # No weighting
 
-  return(modelNN)
-}
-
-
-# @importFrom caret postResample sample_weight
-performance_keras<- function(modelNN, test_data, test_labels, batch_size=NULL, sample_weight=NULL, verbose=0){
-  perf<- keras::evaluate(object=modelNN, x=test_data, y=test_labels, batch_size=batch_size, verbose=verbose, sample_weight=sample_weight)
-  perfCaret<- caret::postResample(pred=stats::predict(modelNN, test_data, batch_size=batch_size), obs=test_labels) # No weighting
-
-  out<- data.frame(as.list(perf), as.list(perfCaret))
+  out<- data.frame(perf, as.list(perfCaret))
   return(out)
 }
 
@@ -42,17 +37,16 @@ performance_keras<- function(modelNN, test_data, test_labels, batch_size=NULL, s
 #' @param variable_groups
 #' @param perm_dim
 #' @param comb_dims
-#' @param batch_size
 #' @param ...
 #'
 #' @return
 #' @export
 #'
 #' @examples
-variableImportance<- function(model, data, y, repVi=5, variable_groups=NULL, perm_dim=NULL, comb_dims=FALSE, batch_size=NULL, ...){
+variableImportance<- function(model, data, y, repVi=5, variable_groups=NULL, perm_dim=NULL, comb_dims=FALSE, ...){
   if (repVi > 0){
     vi<- feature_importance(x=model, data=data, y=y, B=repVi, variable_groups=variable_groups,
-                                         perm_dim=perm_dim, comb_dims=comb_dims, predict_function=stats::predict, batch_size=batch_size, ...)
+                                         perm_dim=perm_dim, comb_dims=comb_dims, predict_function=stats::predict, ...)
     # vi[, "permutation" == 0] -> average; vi[, "permutation" > 0] -> replicates
     vi<- stats::reshape(as.data.frame(vi)[vi[, "permutation"] > 0, c("variable", "dropout_loss", "permutation")], timevar="permutation", idvar="variable", direction="wide")
     vi<- structure(as.matrix(vi[, -1]),
@@ -65,8 +59,8 @@ variableImportance<- function(model, data, y, repVi=5, variable_groups=NULL, per
   return(vi)
 }
 
-
-variableResponse_keras<- function(explainer, variables=NULL, maxPoly=5){
+## TODO: move to generic helpers and also remove from keras_helpers.R
+variableResponse_explainer<- function(explainer, variables=NULL, maxPoly=5){
   if (is.null(variables)){
     variables<- colnames(explainer$data)
   }
@@ -116,7 +110,7 @@ variableResponse_keras<- function(explainer, variables=NULL, maxPoly=5){
 }
 
 
-gatherResults.pipe_result.keras<- function(res, summarizePred, filenameRasterPred, nCoresRaster, repNames){
+gatherResults.pipe_result.randomForest<- function(res, summarizePred, filenameRasterPred, nCoresRaster, repNames){
   if (missing(repNames)){
     names(res)<- paste0("rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res))))
   } else {
@@ -157,7 +151,9 @@ gatherResults.pipe_result.keras<- function(res, summarizePred, filenameRasterPre
 
     out$variableCoef<- lapply(rownames(variableCoef[[1]]), function(x){
       varCoef<- lapply(variableCoef, function(y){
-        stats::na.omit(y[x, , drop=TRUE])
+        # Some adj.r.squared & r.squared are NA
+        y <- y[x, , drop=TRUE]
+        c(y["intercept"], stats::na.omit(y[grep("^b[0-9]+$", names(y))]), y[c("adj.r.squared", "r.squared", "degree")])
       })
 
       degrees<- sapply(varCoef, function(y) y["degree"])
@@ -181,8 +177,7 @@ gatherResults.pipe_result.keras<- function(res, summarizePred, filenameRasterPre
       }
 
       structure(do.call(rbind, c(varCoef, list(deparse.level=0))),
-                dimnames=list(names(varCoef), colNames))## TODO: check translation response var from ingredients::partial_dependency()$`_label_`
-
+                dimnames=list(names(varCoef), colNames)) ## TODO: check translation response var from ingredients::partial_dependency()$`_label_`
     })
     names(out$variableCoef)<- rownames(variableCoef[[1]])
   }
@@ -227,23 +222,11 @@ gatherResults.pipe_result.keras<- function(res, summarizePred, filenameRasterPre
       file.remove(tmpFiles, gsub("\\.grd", ".gri", tmpFiles))
 
     } else { ## non Raster predInput
-      resVarNames<- colnames(out$predictions[[1]])
-      out$predictions<- lapply(resVarNames, function(x){
-                          do.call(cbind, lapply(out$predictions, function(y) y[, x, drop=FALSE]))
-                        })
-      names(out$predictions)<- resVarNames
+      out$predictions<- do.call(cbind, out$predictions)
 
       if (summarizePred){
-        out$predictions<- lapply(out$predictions, function(x){
-                            summarize_pred.default(x)
-                          })
-      }else{
-        out$predictions<- lapply(out$predictions, function(x){
-                            colnames(x)<- paste0("rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res))))
-                            x
-                          })
+        out$predictions<- summarize_pred.default(out$predictions)
       }
-
     }
 
   }
@@ -251,7 +234,7 @@ gatherResults.pipe_result.keras<- function(res, summarizePred, filenameRasterPre
 
   if (!is.null(res[[1]]$model)){
     out$model<- lapply(res, function(x){
-      x$model # unserialize_model() to use the saved model
+      x$model
     })
   }
 
@@ -261,96 +244,16 @@ gatherResults.pipe_result.keras<- function(res, summarizePred, filenameRasterPre
     })
   }
 
-  class(out)<- c("pipe_result.keras", "pipe_result")
+  class(out)<- c("pipe_result", "pipe_result.randomForest")
 
   return(out)
 }
 
-
-
-## FUNCTIONS: Build and Train Neural Networks ----
-build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128, mask=NULL){
-  inputs<- layer_input(shape=input_shape, name="Input")
-
-  if (is.null(mask)){
-    predictions<- inputs
-  } else {
-    predictions<- inputs %>% layer_masking(mask_value=mask, input_shape=input_shape, name=paste0("mask_", mask))
-  }
-
-  for (i in 1:length(hidden_shape)){
-    predictions<- predictions %>% layer_dense(units=hidden_shape[i], name=paste0("Dense_", i))
-  }
-
-  output<- layer_dense(units=output_shape, name="Output")
-
-  model<- keras_model(inputs=inputs, outputs=predictions %>% output)
-  compile(model,
-          loss="mse",
-          optimizer=optimizer_rmsprop(),
-          metrics=list("mean_squared_error", "mean_absolute_error", "mean_absolute_percentage_error")
-  )
-
-  model
-}
-
-build_modelLTSM<- function(input_shape.ts, input_shape.static=0, output_shape=1,
-                           hidden_shape.RNN=32, hidden_shape.static=16, hidden_shape.main=32, mask=NULL){
-  inputs.ts<- layer_input(shape=input_shape.ts, name="TS_input")
-  inputs.static<- layer_input(shape=input_shape.static, name="Static_input")
-
-  if (is.null(mask)){
-    predictions.ts<- inputs.ts
-    predictions.static<- inputs.static
-  } else {
-    predictions.ts<- inputs.ts %>% layer_masking(mask_value=mask, input_shape=input_shape.ts, name=paste0("mask.ts_", mask))
-    predictions.static<- inputs.static %>% layer_masking(mask_value=mask, input_shape=input_shape.static, name=paste0("mask.static_", mask))
-  }
-
-  for (i in 1:length(hidden_shape.RNN)){
-    if (i < length(hidden_shape.RNN)){
-      predictions.ts<- predictions.ts %>% layer_lstm(units=hidden_shape.RNN[i], name=paste0("LSTM_", i), return_sequences=TRUE)
-    } else {
-      predictions.ts<- predictions.ts %>% layer_lstm(units=hidden_shape.RNN[i], name=paste0("LSTM_", i))
-    }
-  }
-
-  if (input_shape.static > 0){
-    for (i in 1:length(hidden_shape.static)){
-      predictions.static<- predictions.static %>% layer_dense(units=hidden_shape.static[i], name=paste0("Dense_", i))
-    }
-    output<- layer_concatenate(c(predictions.ts, predictions.static), name="Concatenate_TS-Static")
-  } else {
-    output<- predictions.ts
-  }
-
-  for (i in 1:length(hidden_shape.main)){
-    output<- output %>% layer_dense(units=hidden_shape.main[i], name=paste0("main_dense_", i))
-  }
-  output<- output %>% layer_dense(units=output_shape, name="main_output")
-
-  if (input_shape.static > 0){
-    model<- keras_model(inputs=c(inputs.ts, inputs.static), outputs=output)
-  } else {
-    model<- keras_model(inputs=inputs.ts, outputs=output)
-  }
-
-  compile(model,
-          loss="mse",
-          optimizer=optimizer_rmsprop(),
-          metrics=list("mean_squared_error", "mean_absolute_error", "mean_absolute_percentage_error")
-  )
-
-  model
-}
-
 # https://github.com/rspatial/raster/blob/b1c9d91b1b43b17ea757889dc93f97bd70dc1d2e/R/predict.R
 # ?raster::`predict,Raster-method`
-# ?predict.keras.engine.training.Model
-predict.Raster_keras<- function(object, model, filename="", fun=predict, ...) {
-  nLayersOut<- model$output_shape[[2]]
-  out<- raster::brick(object, values=FALSE, nl=nLayersOut)
-  big<- !raster::canProcessInMemory(out, raster::nlayers(object) + nLayersOut)
+predict.Raster_randomForest<- function(object, model, filename="", fun=predict, ...) {
+  out<- raster::raster(object)
+  big<- !raster::canProcessInMemory(out, raster::nlayers(object) + 1)
   filename<- raster::trim(filename)
 
   if (big & filename == "") {
@@ -362,7 +265,7 @@ predict.Raster_keras<- function(object, model, filename="", fun=predict, ...) {
     todisk<- TRUE
   } else {
     # ncol=nrow(), nrow=ncol() from https://rspatial.org/raster/pkg/appendix1.html#a-complete-function
-    vv<- array(NA_real_, dim=c(ncol(out), nrow(out), raster::nlayers(out)))
+    vv<- matrix(NA_real_, nrow=ncol(out), ncol=nrow(out))
     todisk<- FALSE
   }
 
@@ -382,10 +285,10 @@ predict.Raster_keras<- function(object, model, filename="", fun=predict, ...) {
   } else {
     for (i in 1:bs$n) {
       v<- raster::getValues(object, row=bs$row[i], nrows=bs$nrows[i])
-      v<- fun(object=model, v, ...)
+      v<- fun(object=model, v, na.action=stats::na.omit, ...)# TODO, ...)
 
       cols<- bs$row[i]:(bs$row[i] + bs$nrows[i] - 1)
-      vv[, cols, ]<- array(v, dim=c(ncol(object), length(cols), nLayersOut))
+      vv[, cols]<- matrix(v, nrow=ncol(object), ncol=length(cols))
 
       raster::pbStep(pb, i)
     }
@@ -401,20 +304,18 @@ predict.Raster_keras<- function(object, model, filename="", fun=predict, ...) {
 
 #' Title
 #'
-#' @param modelNN
-#' @param predInput data.frame or raster with colnames or layer names matching the expected input for modelNN
-#' @param maskNA
+#' @param modelRF
+#' @param predInput data.frame or raster with colnames or layer names matching the expected input for modelRF
 #' @param scaleInput
 #' @param col_means_train
 #' @param col_stddevs_train
-#' @param batch_size
 #' @param filename
 #' @param tempdirRaster
 #'
 #' @return
 #'
 #' @examples
-predict_keras<- function(modelNN, predInput, maskNA=NULL, scaleInput=FALSE, col_means_train, col_stddevs_train, batch_size=NULL, filename="", tempdirRaster=NULL, nCoresRaster=2){
+predict_randomForest<- function(modelRF, predInput, scaleInput=FALSE, col_means_train, col_stddevs_train, filename="", tempdirRaster=NULL, nCoresRaster=2){
   if (inherits(predInput, "Raster") & requireNamespace("raster", quietly=TRUE)){
     if (!is.null(tempdirRaster)){
       filenameScaled<- tempfile(tmpdir=tempdirRaster, fileext=".grd")
@@ -426,34 +327,28 @@ predict_keras<- function(modelNN, predInput, maskNA=NULL, scaleInput=FALSE, col_
     }
 
     if (scaleInput){
+      ## TODO: onehot for categorical vars ----
       # predInputScaled<- raster::scale(predInput, center=col_means_train, scale=col_stddevs_train)
       raster::beginCluster(n=nCoresRaster)
       predInputScaled<- raster::clusterR(predInput, function(x, col_means_train, col_stddevs_train){
                                     raster::calc(x, fun=function(y) scale(y, center=col_means_train, scale=col_stddevs_train))
                                   }, args=list(col_means_train=col_means_train, col_stddevs_train=col_stddevs_train), filename=filenameScaled)
-      if (!is.null(maskNA)){
-        predInputScaled<- raster::clusterR(predInputScaled, function(x, maskNA){
-                                      raster::calc(x, fun=function(y) { y[is.na(y)]<- maskNA; y } )
-                                    }, args=list(maskNA=maskNA), filename=filenameScaled, overwrite=TRUE) # gsub(".grd$", "_mask.grd", filenameScaled)
-      }
       raster::endCluster()
       names(predInputScaled)<- names(predInput)
-      # ?keras::predict.keras.engine.training.Model
       # ?raster::`predict,Raster-method`
     } else {
       predInputScaled<- predInput
     }
 
-    predicts<- predict.Raster_keras(object=predInputScaled, model=modelNN, filename=filename,
-                                    batch_size=batch_size) # TODO, verbose=verbose)
+    predicts<- predict.Raster_randomForest(object=predInputScaled, model=modelRF, filename=filename) # TODO, verbose=verbose)
 
     if (scaleInput){
       file.remove(filenameScaled, gsub("\\.grd$", ".gri", filenameScaled))
       rm(predInputScaled)
     }
 
-    # predicti<- raster::predict(object=predInputScaled, model=modelNN,
-    #                    fun=keras:::predict.keras.engine.training.Model,
+    # predicti<- raster::predict(object=predInputScaled, model=modelRF,
+    #                    fun=predict,
     #                    filename=filename,
     #                    batch_size=ifelse(batch_size %in% "all", raster::ncell(predInputScaled), batch_size),
     #                    verbose=verbose)
@@ -464,19 +359,13 @@ predict_keras<- function(modelNN, predInput, maskNA=NULL, scaleInput=FALSE, col_
       predInputScaled<- scale(predInput[, names(col_means_train), drop=FALSE],
                               center=col_means_train, scale=col_stddevs_train)
       predInputScaled<- cbind(predInputScaled, predInput[, setdiff(colnames(predInput), colnames(predInputScaled))])
-      if (!is.null(maskNA)){
-        predInputScaled<- apply(predInputScaled, 2, function(x){
-          x[is.na(x)]<- maskNA
-          x
-        })
-      }
     } else {
       predInputScaled<- predInput
     }
 
-    predicts<- stats::predict(modelNN, predInputScaled, batch_size=batch_size) # TODO, verbose=verbose)
+    predicts<- stats::predict(modelRF, predInputScaled) # TODO, verbose=verbose)
   } else {
-    predicts<- stats::predict(modelNN, predInput, batch_size=batch_size) # TODO, verbose=verbose)
+    predicts<- stats::predict(modelRF, predInput) # TODO, verbose=verbose)
   }
 
   return(predicts)

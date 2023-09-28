@@ -1,6 +1,6 @@
-#' summary.pipe_result.keras
+#' summary.pipe_result
 #'
-#' @param object a pipe_result.keras object
+#' @param object a `pipe_result` object.
 #' @param ... parameters to summarize_pred.Raster function.
 #'
 #' @return
@@ -8,7 +8,7 @@
 #'
 #' @examples
 # @importFrom coda mcmc mcmc.list
-summary.pipe_result.keras<- function(object, ...){
+summary.pipe_result<- function(object, ...){
   out<- list()
 
   ## performance
@@ -86,15 +86,21 @@ summary.pipe_result.keras<- function(object, ...){
 
   out$params<- object$params
 
-  class(out)<- "summary.pipe_result.keras"
+  class(out)<- paste0("summary.", class(object))
 
   return(out)
 }
 
 
 #' @export
-print.pipe_result.keras<- function(x, ...){
-  cat("Keras pipe result with", nrow(x$performance), "replicates.\n")
+print.pipe_result<- function(x, ...){
+  if (inherits(x, "pipe_result.keras")){
+    cat("Keras ")
+  } else if (inherits(x, "pipe_result.randomForest")){
+    cat("randomForest ")
+  }
+  cat("pipe result with", nrow(x$performance), "replicates.\n")
+
   cat("\nPerformance:\n")
   print(x$performance, ...)
   if (!is.null(x$vi)){
@@ -126,8 +132,14 @@ print.pipe_result.keras<- function(x, ...){
 
 
 #' @export
-print.summary.pipe_result.keras<- function(x, ...){
-  cat("Keras pipe result summary with", nrow(x$performance), "replicates.\n")
+print.summary.pipe_result<- function(x, ...){
+  if (inherits(x, "summary.pipe_result.keras")){
+    cat("Keras ")
+  } else if (inherits(x, "summary.pipe_result.randomForest")){
+    cat("randomForest ")
+  }
+  cat("pipe result summary with", nrow(x$performance), "replicates.\n")
+
   cat("\nPerformance:\n")
   print(x$performance, ...)
   if (!is.null(x$vi)){
@@ -158,7 +170,7 @@ print.summary.pipe_result.keras<- function(x, ...){
 }
 
 
-#' plotVI.pipe_result.keras
+#' plotVI.pipe_result
 #'
 #' @param res
 #' @param vi
@@ -169,10 +181,10 @@ print.summary.pipe_result.keras<- function(x, ...){
 #'
 #' @examples
 # @import ggplot2
-plotVI.pipe_result.keras<- function(res, vi=c("ratio", "diff", "raw"), dispersion=c("sd", "se", "ci")){
+plotVI.pipe_result<- function(res, vi=c("ratio", "diff", "raw"), dispersion=c("sd", "se", "ci")){
   vi<- match.arg(vi)
   dispersion<- match.arg(dispersion)
-  vi.summary<- summary.pipe_result.keras(res)$vi
+  vi.summary<- summary.pipe_result(res)$vi
   viD<- switch(vi,
              ratio=vi.summary$viRatio.summary,
              diff=vi.summary$viDiff.summary,

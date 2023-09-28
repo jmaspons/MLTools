@@ -478,7 +478,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
     out$validateset<- lapply(idxSetsL, function(x) df[x$validateset, ])
   }
 
-  class(out)<- "pipe_result.keras"
+  class(out)<- c("pipe_result.keras", "pipe_result")
 
   return(out)
 }
