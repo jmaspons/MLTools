@@ -395,7 +395,8 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
           ## TODO
           # warning("DALEX not ready for multiinput models")
         } else {
-          explainer<- DALEX::explain(model=modelNN, data=validate_data, y=validate_labels, predict_function=stats::predict, label="RNN_keras", verbose=FALSE)
+          explainer<- DALEX::explain(model=modelNN, data=validate_data, y=validate_labels, predict_function=stats::predict,
+                                     weights=sample_weight.validate, label="RNN_keras", verbose=FALSE)
           resi$explainer<- explainer
         }
       }

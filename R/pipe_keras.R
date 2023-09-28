@@ -291,7 +291,8 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
 
     ## Explain model
     if (variableResponse | DALEXexplainer){
-      explainer<- DALEX::explain(model=modelNN, data=validate_data, y=validate_labels, predict_function=stats::predict, label="MLP_keras", verbose=FALSE)
+      explainer<- DALEX::explain(model=modelNN, data=validate_data, y=validate_labels, predict_function=stats::predict,
+                                 weights=sample_weight.validate, label="MLP_keras", verbose=FALSE)
 
       ## Variable response
       if (variableResponse){
