@@ -286,9 +286,10 @@ build_modelDNN<- function(input_shape, output_shape=1, hidden_shape=128, mask=NU
 
   model<- keras_model(inputs=inputs, outputs=predictions %>% output)
   compile(model,
-          loss="mse",
           optimizer=optimizer_rmsprop(),
-          metrics=list("mean_squared_error", "mean_absolute_error", "mean_absolute_percentage_error")
+          loss="mse",
+          metrics=list("mean_squared_error", "mean_absolute_error", "mean_absolute_percentage_error"),
+          weighted_metrics=list("mean_squared_error", "mean_absolute_error", "mean_absolute_percentage_error")
   )
 
   model
