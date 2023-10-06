@@ -228,7 +228,7 @@ pipe_randomForest<- function(df, predInput=NULL, responseVar=1, caseClass=NULL, 
     #                                      do.trace=ifelse(verbose > 2, TRUE, FALSE), keep.forest=RFmodel, ...)
     # TODO: use formula to deal with NAs
     form<- stats::as.formula(paste(colnames(train_labels), "~ ."))
-    modelRF<- randomForest::randomForest(formula=form, data=cbind(train_data, train_labels), xtest=test_data, ytest=test_labels[[1]],
+    modelRF<- randomForest::randomForest(formula=form, data=cbind(train_data, train_labels), xtest=test_data, ytest=test_labels[, 1],
                                          ntree=ntree, weights=sample_weight$weight.train, na.action=stats::na.omit, importance=importance,
                                          do.trace=ifelse(verbose > 2, TRUE, FALSE), keep.forest=RFmodel, ...)
     if (verbose > 1) message("Training done")
@@ -243,7 +243,7 @@ pipe_randomForest<- function(df, predInput=NULL, responseVar=1, caseClass=NULL, 
     } else {
       sample_weight.validate<- NULL
     }
-    resi$performance<- performance_randomForest(modelRF=modelRF, test_data=validate_data, test_labels=validate_labels[[1]],
+    resi$performance<- performance_randomForest(modelRF=modelRF, test_data=validate_data, test_labels=validate_labels[, 1],
                                                 sample_weight=sample_weight.validate, verbose=max(c(0, verbose - 2)))
 
     if (verbose > 1) message("Performance analyses done")
@@ -327,7 +327,7 @@ pipe_randomForest<- function(df, predInput=NULL, responseVar=1, caseClass=NULL, 
     out$validateset<- lapply(idxSetsL, function(x) df[x$validateset, ])
   }
 
-  class(out)<- c("pipe_result", "pipe_result.randomForest")
+  class(out)<- c("pipe_result.randomForest", "pipe_result")
 
   return(out)
 }
