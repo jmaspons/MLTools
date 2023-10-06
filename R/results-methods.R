@@ -98,6 +98,8 @@ print.pipe_result<- function(x, ...){
     cat("Keras ")
   } else if (inherits(x, "pipe_result.randomForest")){
     cat("randomForest ")
+  } else if (inherits(x, "pipe_result.xgboost")){
+    cat("xgboost ")
   }
   cat("pipe result with", nrow(x$performance), "replicates.\n")
 
@@ -137,6 +139,8 @@ print.summary.pipe_result<- function(x, ...){
     cat("Keras ")
   } else if (inherits(x, "summary.pipe_result.randomForest")){
     cat("randomForest ")
+  } else if (inherits(x, "summary.pipe_result.xgboost")){
+    cat("xgboost ")
   }
   cat("pipe result summary with", nrow(x$performance), "replicates.\n")
 
