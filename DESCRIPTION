@@ -21,7 +21,8 @@ Imports:
     ingredients,
     keras,
     methods,
-    randomForest
+    randomForest,
+    xgboost
 Suggests:
     future,
     future.callr,
