@@ -350,7 +350,6 @@ predict_randomForest<- function(modelRF, predInput, scaleInput=FALSE, col_means_
     # predicti<- raster::predict(object=predInputScaled, model=modelRF,
     #                    fun=predict,
     #                    filename=filename,
-    #                    batch_size=ifelse(batch_size %in% "all", raster::ncell(predInputScaled), batch_size),
     #                    verbose=verbose)
     # predicts[[i]]<- predicti
 

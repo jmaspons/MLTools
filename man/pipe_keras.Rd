@@ -59,6 +59,8 @@ pipe_keras(
 
 \item{hidden_shape}{number of neurons in the hidden layers of the neural network model. Can be a vector with values for each hidden layer.}
 
+\item{maskNA}{value to assign to \code{NA}s after scaling and passed to \code{\link[keras:layer_masking]{keras::layer_masking()}}.}
+
 \item{batch_size}{for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".}
 
 \item{summarizePred}{if \code{TRUE}, return the mean, sd and se of the predictors. if \code{FALSE}, return the predictions for each replicate.}

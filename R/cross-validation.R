@@ -29,7 +29,7 @@ subset_train_test_validate<- function(d, ratio=c(train=0.6, test=0.2, validate=0
     } else if (length(caseClass) == length(index)){
       classCol<- NULL
     } else {
-      stop("«caseClass» parameter should be an atomic value indicating a column of d, a vector with values for every case in d or 1 if d is a vector containing caseClass.")
+      stop("`caseClass` parameter should be an atomic value indicating a column of d, a vector with values for every case in d or 1 if d is a vector containing caseClass.")
     }
     indexL<- split(index, caseClass, drop=TRUE)
   }
@@ -116,7 +116,7 @@ kFold_train_test_validate<- function(d, k=5, replicates=5, caseClass=NULL, weigh
     } else if (length(caseClass) == length(index)){
       classCol<- NULL
     } else {
-      stop("«caseClass» parameter should be an atomic value indicating a column of d, a vector with values for every case in d or 1 if d is a vector containing caseClass.")
+      stop("`caseClass` parameter should be an atomic value indicating a column of d, a vector with values for every case in d or 1 if d is a vector containing caseClass.")
     }
     indexL<- split(index, caseClass, drop=TRUE)
   }

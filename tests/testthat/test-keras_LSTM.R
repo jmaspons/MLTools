@@ -44,7 +44,7 @@ scaleDataset<- FALSE
 NNmodel<- TRUE
 DALEXexplainer<- TRUE
 variableResponse<- TRUE
-save_validateset<- FALSE
+save_validateset<- TRUE
 baseFilenameNN<- NULL
 filenameRasterPred<- NULL
 tempdirRaster<- NULL
@@ -149,10 +149,14 @@ test_that("keras_LSTM works", {
   # expect_equal(sum(grepl(baseFilenameNN, dir(tempdir(), full.names=TRUE))), k - 1)
 ## TODO: DALEXexplainer not implemented for multiinput models
   tmp<- lapply(result, function(x){
-    # expect_type(x$DALEXexplainer, type="list")
+    expect_type(x$validateset, type="list")
     reps<- nrow(x$performance)
-    # expect_equal(names(x$DALEXexplainer), expected=paste0("rep", formatC(1:reps, format="d", flag="0", width=nchar(reps))))
-    # lapply(x$DALEXexplainer, expect_s3_class, class="explainer")
+    if (x$params$crossValStrategy == "bootstrap"){
+      expect_equal(names(x$validateset), expected=paste0("rep", formatC(1:reps, format="d", flag="0", width=nchar(reps))))
+    } else if (x$params$crossValStrategy == "Kfold") {
+      expect_equal(names(x$validateset), expected=paste0("Fold", 2:k, ".Rep", rep(1:replicates, each=k-1)))  # Fold2:k (Fold1 for validationset)
+    }
+    lapply(x$validateset, expect_s3_class, class="data.frame")
   })
 })
 

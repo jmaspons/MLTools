@@ -13,12 +13,13 @@
 #' @param crossValRatio Proportion of the dataset used to train, test and validate the model when `crossValStrategy="bootstrap"`. Default to `c(train=0.6, test=0.2, validate=0.2)`. If there is only one value, will be taken as a train proportion and the test set will be used for validation.
 #' @param hidden_shape number of neurons in the hidden layers of the neural network model. Can be a vector with values for each hidden layer.
 #' @param epochs parameter for \code\link[keras]{fit}}.
+#' @param maskNA value to assign to `NA`s after scaling and passed to [keras::layer_masking()].
 #' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
 #' @param summarizePred if `TRUE`, return the mean, sd and se of the predictors. if `FALSE`, return the predictions for each replicate.
 #' @param scaleDataset if `TRUE`, scale the whole dataset only once instead of the train set at each replicate. Optimize processing time for predictions with large rasters.
 #' @param NNmodel if TRUE, return the serialized model with the result.
-#' @param DALEXexplainer if TRUE, return a explainer for the models from \code\link[DALEX]{explain}} function. It doesn't work with multisession future plans.
-#' @param variableResponse if TRUE, return aggregated_profiles_explainer object from \code\link[ingredients]{partial_dependency}} and the coefficients of the adjusted linear model.
+#' @param DALEXexplainer if `TRUE`, return a explainer for the models from \code\link[DALEX]{explain}} function. It doesn't work with multisession future plans.
+#' @param variableResponse if `TRUE`, return `aggregated_profiles_explainer` objects from \code\link[ingredients]{partial_dependency}} and the coefficients of the adjusted linear model.
 #' @param save_validateset save the validateset (independent data not used for training).
 #' @param baseFilenameNN if no missing, save the NN in hdf5 format on this path with iteration appended.
 #' @param filenameRasterPred if no missing, save the predictions in a RasterBrick to this file.

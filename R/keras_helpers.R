@@ -337,9 +337,10 @@ build_modelLTSM<- function(input_shape.ts, input_shape.static=0, output_shape=1,
   }
 
   compile(model,
-          loss="mse",
           optimizer=optimizer_rmsprop(),
-          metrics=list("mean_squared_error", "mean_absolute_error", "mean_absolute_percentage_error")
+          loss="mse",
+          metrics=list("mean_squared_error", "mean_absolute_error", "mean_absolute_percentage_error"),
+          weighted_metrics=list("mean_squared_error", "mean_absolute_error", "mean_absolute_percentage_error")
   )
 
   model

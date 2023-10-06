@@ -114,7 +114,7 @@ print.pipe_result<- function(x, ...){
     print(x$variableCoef, ...)
   }
   if (!is.null(x$predictions)){
-    cat("\nPredictions for «predInput» data:\n")
+    cat("\nPredictions for `predInput` data:\n")
     print(x$predictions, ...)
   }
   if (!is.null(x$model)){
@@ -155,7 +155,7 @@ print.summary.pipe_result<- function(x, ...){
     print(x$variableCoef, ...)
   }
   if (!is.null(x$predictions)){
-    cat("\nPredictions for «predInput» data:\n")
+    cat("\nPredictions for `predInput` data:\n")
     print(x$predictions, ...)
   }
   if (!is.null(x$model)){
