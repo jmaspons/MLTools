@@ -11,7 +11,6 @@ pipe_keras(
   caseClass = NULL,
   idVars = character(),
   weight = "class",
-  repVi = 5,
   crossValStrategy = c("Kfold", "bootstrap"),
   k = 5,
   replicates = 10,
@@ -20,6 +19,9 @@ pipe_keras(
   epochs = 500,
   maskNA = NULL,
   batch_size = "all",
+  shap = TRUE,
+  aggregate_shap = TRUE,
+  repVi = 5,
   summarizePred = TRUE,
   scaleDataset = FALSE,
   NNmodel = FALSE,
@@ -47,8 +49,6 @@ pipe_keras(
 
 \item{weight}{Optional array of the same length as \code{nrow(df)}, containing weights to apply to the model's loss for each sample.}
 
-\item{repVi}{replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.}
-
 \item{crossValStrategy}{\code{Kfold} or \code{bootstrap}.}
 
 \item{k}{number of data partitions when \code{crossValStrategy="Kfold"}.}
@@ -63,11 +63,17 @@ pipe_keras(
 
 \item{batch_size}{for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".}
 
+\item{shap}{if \code{TRUE}, return the SHAP values as per \code{\link[kernelshap:kernelshap]{kernelshap::kernelshap()}}.}
+
+\item{aggregate_shap}{if \code{TRUE}, and \code{shap} is also \code{TRUE}, aggregate SHAP from all replicates.}
+
+\item{repVi}{replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.}
+
 \item{summarizePred}{if \code{TRUE}, return the mean, sd and se of the predictors. if \code{FALSE}, return the predictions for each replicate.}
 
 \item{scaleDataset}{if \code{TRUE}, scale the whole dataset only once instead of the train set at each replicate. Optimize processing time for predictions with large rasters.}
 
-\item{NNmodel}{if TRUE, return the serialized model with the result.}
+\item{NNmodel}{if TRUE, return the serialized model with the result. Use \code{\link[keras:serialize_model]{keras::unserialize_model()}} to get the model.}
 
 \item{save_validateset}{save the validateset (independent data not used for training).}
 

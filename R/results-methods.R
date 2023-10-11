@@ -19,6 +19,14 @@ summary.pipe_result<- function(object, ...){
 
   out$performance<- do.call(rbind, perf.summary)
 
+  # SHAP
+  if (!is.null(object$shap)){
+    if (!inherits(object$shap, "kernelshap")){ # aggregate_shap
+      out$shap<- summary(aggregate_kernelshap(object$shap))
+    } else {
+      out$shap<- summary(object$shap)
+    }
+  }
 
   ## variable importance
   if (!is.null(object$vi)){
@@ -105,6 +113,10 @@ print.pipe_result<- function(x, ...){
 
   cat("\nPerformance:\n")
   print(x$performance, ...)
+  if (!is.null(x$shap)){
+    cat("\nSHAP:\n")
+    print(x$shap, ...)
+  }
   if (!is.null(x$vi)){
     cat("\nVariable Importance:\n")
     print(x$vi, ...)
@@ -146,6 +158,10 @@ print.summary.pipe_result<- function(x, ...){
 
   cat("\nPerformance:\n")
   print(x$performance, ...)
+  if (!is.null(x$shap)){
+    cat("\nSHAP:\n")
+    print(x$shap, ...)
+  }
   if (!is.null(x$vi)){
     cat("\nVariable Importance:\n")
     print(x$vi, ...)

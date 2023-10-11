@@ -9,10 +9,6 @@
 #' @param timevar column name of the variable containing the time.
 #' @param responseTime a `timevar` value used as a response var for `responseVars` or the default "LAST" for the last timestep available (`max(df[, timevar])`).
 #' @param regex_time regular expression matching the `timevar` values format.
-#' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.
-#' @param perm_dim dimension to perform the permutations to calculate the importance of the variables (data dimensions \[case, time, variable\]).
-#' If `perm_dim = 2:3`, it calculates the importance for each combination of the 2nd and 3rd dimensions.
-#' @param comb_dims variable importance calculations, if `TRUE`, do the permutations for each combination of the levels of the variables from 2nd and 3rd dimensions for input data with 3 dimensions. By default `FALSE`.
 #' @param crossValStrategy `Kfold` or `bootstrap`.
 #' @param replicates number of replicates for `crossValStrategy="bootstrap"` and `crossValStrategy="Kfold"` (`replicates * k-1`, 1 fold for validation).
 #' @param k number of data partitions when `crossValStrategy="Kfold"`.
@@ -23,6 +19,10 @@
 #' @param epochs parameter for \code\link[keras]{fit}}.
 #' @param maskNA value to assign to `NA`s after scaling and passed to [keras::layer_masking()].
 #' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
+#' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.
+#' @param perm_dim dimension to perform the permutations to calculate the importance of the variables (data dimensions \[case, time, variable\]).
+#' If `perm_dim = 2:3`, it calculates the importance for each combination of the 2nd and 3rd dimensions.
+#' @param comb_dims variable importance calculations, if `TRUE`, do the permutations for each combination of the levels of the variables from 2nd and 3rd dimensions for input data with 3 dimensions. By default `FALSE`.
 #' @param summarizePred if `TRUE`, return the mean, sd and se of the predictors. if `FALSE`, return the predictions for each replicate.
 #' @param scaleDataset if `TRUE`, scale the whole dataset only once instead of the train set at each replicate. Optimize processing time for predictions with large rasters.
 #' @param NNmodel if TRUE, return the serialized model with the result.
@@ -43,9 +43,9 @@
 #' @examples
 pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars=character(), weight="class",
                    timevar=NULL, responseTime="LAST", regex_time=".+", staticVars=NULL,
-                   repVi=5, perm_dim=2:3, comb_dims=FALSE, crossValStrategy=c("Kfold", "bootstrap"), k=5, replicates=10, crossValRatio=c(train=0.6, test=0.2, validate=0.2),
+                   crossValStrategy=c("Kfold", "bootstrap"), k=5, replicates=10, crossValRatio=c(train=0.6, test=0.2, validate=0.2),
                    hidden_shape.RNN=c(32, 32), hidden_shape.static=c(32, 32), hidden_shape.main=32, epochs=500, maskNA=NULL, batch_size="all",
-                   summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE, variableResponse=FALSE, save_validateset=FALSE,
+                   repVi=5, perm_dim=2:3, comb_dims=FALSE, summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE, variableResponse=FALSE, save_validateset=FALSE,
                    baseFilenameNN=NULL, filenameRasterPred=NULL, tempdirRaster=NULL, nCoresRaster=parallel::detectCores() %/% 2, verbose=0, ...){
   crossValStrategy<- match.arg(crossValStrategy)
   if (is.numeric(responseVars)){
@@ -344,9 +344,12 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
 
     if (verbose > 1) message("Performance analyses done")
 
+    ## TODO: SHAP kernelshap not ready for multiinput models nor 3d arrays
+
     ## Explain model
     ## TODO: fix Explain model incorrect number of dimensions. Perhaps not ready for 3d data? ----
 
+    ## Variable importance
     if (repVi > 0){
       variable_groups<- NULL
       if (length(predVars.cat) > 0){
@@ -382,7 +385,6 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
       ## TODO: DALEX not ready for multiinput models
       # explainer<- DALEX::explain(model=modelNN, data=validate_data, y=validate_labels, predict_function=stats::predict, label="MLP_keras", verbose=FALSE)
 
-      ## Variable importance
 
 
       ## Variable response
@@ -451,13 +453,14 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
   if (verbose > 0) message("Iterations finished. Gathering results...")
 
   out<- gatherResults.pipe_result.keras(res=res, summarizePred=summarizePred, filenameRasterPred=filenameRasterPred, nCoresRaster=nCoresRaster, repNames=names(idxSetsL))
+
   out$params<- list(responseVars=responseVars, predVars=predVars, staticVars=staticVars, predVars.cat=predVars.cat,
                     caseClass=caseClass, idVars=idVars, weight=weight,
-                    timevar=timevar, responseTime=responseTime, regex_time=regex_time, perm_dim=perm_dim, comb_dims=comb_dims,
-                    repVi=repVi, crossValStrategy=crossValStrategy, k=k, replicates=replicates, crossValRatio=crossValRatio,
+                    timevar=timevar, responseTime=responseTime, regex_time=regex_time,
+                    crossValStrategy=crossValStrategy, k=k, replicates=replicates, crossValRatio=crossValRatio,
                     shapeNN=list(hidden_shape.RNN=hidden_shape.RNN, hidden_shape.static=hidden_shape.static, hidden_shape.main=hidden_shape.main),
                     epochs=epochs, maskNA=maskNA, batch_size=batch_size,
-                    summarizePred=summarizePred, scaleDataset=scaleDataset, NNmodel=NNmodel, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
+                    repVi=repVi, perm_dim=perm_dim, comb_dims=comb_dims, summarizePred=summarizePred, scaleDataset=scaleDataset, NNmodel=NNmodel, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
                     save_validateset=save_validateset, baseFilenameNN=baseFilenameNN, filenameRasterPred=filenameRasterPred)
   if (crossValStrategy != "Kfold") out$params$k<- NULL
 
