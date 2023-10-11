@@ -15,9 +15,6 @@ pipe_keras_timeseries(
   responseTime = "LAST",
   regex_time = ".+",
   staticVars = NULL,
-  repVi = 5,
-  perm_dim = 2:3,
-  comb_dims = FALSE,
   crossValStrategy = c("Kfold", "bootstrap"),
   k = 5,
   replicates = 10,
@@ -28,6 +25,9 @@ pipe_keras_timeseries(
   epochs = 500,
   maskNA = NULL,
   batch_size = "all",
+  repVi = 5,
+  perm_dim = 2:3,
+  comb_dims = FALSE,
   summarizePred = TRUE,
   scaleDataset = FALSE,
   NNmodel = FALSE,
@@ -61,13 +61,6 @@ pipe_keras_timeseries(
 
 \item{regex_time}{regular expression matching the \code{timevar} values format.}
 
-\item{repVi}{replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.}
-
-\item{perm_dim}{dimension to perform the permutations to calculate the importance of the variables (data dimensions [case, time, variable]).
-If \code{perm_dim = 2:3}, it calculates the importance for each combination of the 2nd and 3rd dimensions.}
-
-\item{comb_dims}{variable importance calculations, if \code{TRUE}, do the permutations for each combination of the levels of the variables from 2nd and 3rd dimensions for input data with 3 dimensions. By default \code{FALSE}.}
-
 \item{crossValStrategy}{\code{Kfold} or \code{bootstrap}.}
 
 \item{k}{number of data partitions when \code{crossValStrategy="Kfold"}.}
@@ -85,6 +78,13 @@ If \code{perm_dim = 2:3}, it calculates the importance for each combination of t
 \item{maskNA}{value to assign to \code{NA}s after scaling and passed to \code{\link[keras:layer_masking]{keras::layer_masking()}}.}
 
 \item{batch_size}{for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".}
+
+\item{repVi}{replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.}
+
+\item{perm_dim}{dimension to perform the permutations to calculate the importance of the variables (data dimensions [case, time, variable]).
+If \code{perm_dim = 2:3}, it calculates the importance for each combination of the 2nd and 3rd dimensions.}
+
+\item{comb_dims}{variable importance calculations, if \code{TRUE}, do the permutations for each combination of the levels of the variables from 2nd and 3rd dimensions for input data with 3 dimensions. By default \code{FALSE}.}
 
 \item{summarizePred}{if \code{TRUE}, return the mean, sd and se of the predictors. if \code{FALSE}, return the predictions for each replicate.}
 

@@ -80,6 +80,10 @@ test_that("pipe_randomForest works", {
   })
 
   tmp<- lapply(result, function(x){
+    expect_s3_class(x$shap, class = "kernelshap")
+  })
+
+  tmp<- lapply(result, function(x){
     expect_type(x$vi, type="double")
     reps<- nrow(x$performance)
     repsVi<- x$params$repVi

@@ -6,7 +6,6 @@
 #' @param caseClass class of the samples used to weight cases. Column names or indexes on `df`, or a vector with the class for each rows in `df`.
 #' @param idVars id column names or indexes on `df`. This columns will not be used for training.
 #' @param weight Optional array of the same length as `nrow(df)`, containing weights to apply to the model's loss for each sample.
-#' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.
 #' @param crossValStrategy `Kfold` or `bootstrap`.
 #' @param replicates number of replicates for `crossValStrategy="bootstrap"` and `crossValStrategy="Kfold"` (`replicates * k-1`, 1 fold for validation).
 #' @param k number of data partitions when `crossValStrategy="Kfold"`.
@@ -15,9 +14,12 @@
 #' @param epochs parameter for \code\link[keras]{fit}}.
 #' @param maskNA value to assign to `NA`s after scaling and passed to [keras::layer_masking()].
 #' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
+#' @param shap if `TRUE`, return the SHAP values as per [kernelshap::kernelshap()].
+#' @param aggregate_shap if `TRUE`, and `shap` is also `TRUE`, aggregate SHAP from all replicates.
+#' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.
 #' @param summarizePred if `TRUE`, return the mean, sd and se of the predictors. if `FALSE`, return the predictions for each replicate.
 #' @param scaleDataset if `TRUE`, scale the whole dataset only once instead of the train set at each replicate. Optimize processing time for predictions with large rasters.
-#' @param NNmodel if TRUE, return the serialized model with the result.
+#' @param NNmodel if TRUE, return the serialized model with the result. Use [keras::unserialize_model()] to get the model.
 #' @param DALEXexplainer if `TRUE`, return a explainer for the models from \code\link[DALEX]{explain}} function. It doesn't work with multisession future plans.
 #' @param variableResponse if `TRUE`, return `aggregated_profiles_explainer` objects from \code\link[ingredients]{partial_dependency}} and the coefficients of the adjusted linear model.
 #' @param save_validateset save the validateset (independent data not used for training).
@@ -34,10 +36,10 @@
 #' @importFrom stats predict
 #' @examples
 pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars=character(), weight="class",
-                   repVi=5, crossValStrategy=c("Kfold", "bootstrap"), k=5, replicates=10, crossValRatio=c(train=0.6, test=0.2, validate=0.2),
+                   crossValStrategy=c("Kfold", "bootstrap"), k=5, replicates=10, crossValRatio=c(train=0.6, test=0.2, validate=0.2),
                    hidden_shape=50, epochs=500, maskNA=NULL, batch_size="all",
-                   summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE, variableResponse=FALSE, save_validateset=FALSE,
-                   baseFilenameNN=NULL, filenameRasterPred=NULL, tempdirRaster=NULL, nCoresRaster=parallel::detectCores() %/% 2, verbose=0, ...){
+                   shap=TRUE, aggregate_shap=TRUE, repVi=5, summarizePred=TRUE, scaleDataset=FALSE, NNmodel=FALSE, DALEXexplainer=FALSE, variableResponse=FALSE,
+                   save_validateset=FALSE, baseFilenameNN=NULL, filenameRasterPred=NULL, tempdirRaster=NULL, nCoresRaster=parallel::detectCores() %/% 2, verbose=0, ...){
   crossValStrategy<- match.arg(crossValStrategy)
   if (is.numeric(responseVars)){
     responseVars<- colnames(df)[responseVars]
@@ -273,6 +275,11 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
 
     if (verbose > 1) message("Performance analyses done")
 
+    ## SHAP
+    if (shap){
+      resi$shap<- get_shap(model=modelNN, test_data=validate_data, bg_data=train_data, bg_weight=sample_weight$weight.train, verbose=max(c(0, verbose - 2)))
+    }
+
     ## Variable importance
     if (repVi > 0){
       variable_groups<- NULL
@@ -338,12 +345,13 @@ pipe_keras<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVars
 
   if (verbose > 0) message("Iterations finished. Gathering results...")
 
-  out<- gatherResults.pipe_result.keras(res=res, summarizePred=summarizePred, filenameRasterPred=filenameRasterPred, nCoresRaster=nCoresRaster, repNames=names(idxSetsL))
+  out<- gatherResults.pipe_result.keras(res=res, aggregate_shap=aggregate_shap, summarizePred=summarizePred, filenameRasterPred=filenameRasterPred, nCoresRaster=nCoresRaster, repNames=names(idxSetsL))
+
   out$params<- list(responseVars=responseVars, predVars=predVars, predVars.cat=predVars.cat,
                     caseClass=caseClass, idVars=idVars, weight=weight,
-                    repVi=repVi, crossValStrategy=crossValStrategy, k=k, replicates=replicates, crossValRatio=crossValRatio,
+                    crossValStrategy=crossValStrategy, k=k, replicates=replicates, crossValRatio=crossValRatio,
                     shapeNN=list(hidden_shape=hidden_shape), epochs=epochs, maskNA=maskNA, batch_size=batch_size,
-                    summarizePred=summarizePred, scaleDataset=scaleDataset, NNmodel=NNmodel, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
+                    shap=shap, aggregate_shap=aggregate_shap, repVi=repVi, summarizePred=summarizePred, scaleDataset=scaleDataset, NNmodel=NNmodel, DALEXexplainer=DALEXexplainer, variableResponse=variableResponse,
                     save_validateset=save_validateset, baseFilenameNN=baseFilenameNN, filenameRasterPred=filenameRasterPred)
   if (crossValStrategy != "Kfold") out$params$k<- NULL
 

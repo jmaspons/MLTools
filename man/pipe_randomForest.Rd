@@ -11,13 +11,15 @@ pipe_randomForest(
   caseClass = NULL,
   idVars = character(),
   weight = "class",
-  repVi = 5,
   crossValStrategy = c("Kfold", "bootstrap"),
   k = 5,
   replicates = 10,
   crossValRatio = c(train = 0.6, test = 0.2, validate = 0.2),
   ntree = 500,
   importance = TRUE,
+  shap = TRUE,
+  aggregate_shap = TRUE,
+  repVi = 5,
   summarizePred = TRUE,
   scaleDataset = FALSE,
   RFmodel = FALSE,
@@ -44,8 +46,6 @@ pipe_randomForest(
 
 \item{weight}{Optional array of the same length as \code{nrow(df)}, containing weights to apply to the model's loss for each sample.}
 
-\item{repVi}{replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.}
-
 \item{crossValStrategy}{\code{Kfold} or \code{bootstrap}.}
 
 \item{k}{number of data partitions when \code{crossValStrategy="Kfold"}.}
@@ -55,6 +55,12 @@ pipe_randomForest(
 \item{crossValRatio}{Proportion of the dataset used to train, test and validate the model when \code{crossValStrategy="bootstrap"}. Default to \code{c(train=0.6, test=0.2, validate=0.2)}. If there is only one value, will be taken as a train proportion and the test set will be used for validation.}
 
 \item{ntree}{Number of trees to grow.}
+
+\item{shap}{if \code{TRUE}, return the SHAP values as per \code{\link[kernelshap:kernelshap]{kernelshap::kernelshap()}}.}
+
+\item{aggregate_shap}{if \code{TRUE}, and \code{shap} is also \code{TRUE}, aggregate SHAP from all replicates.}
+
+\item{repVi}{replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.}
 
 \item{summarizePred}{if \code{TRUE}, return the mean, sd and se of the predictors. if \code{FALSE}, return the predictions for each replicate.}
 

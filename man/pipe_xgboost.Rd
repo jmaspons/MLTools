@@ -11,19 +11,22 @@ pipe_xgboost(
   caseClass = NULL,
   idVars = character(),
   weight = "class",
-  repVi = 5,
   crossValStrategy = c("Kfold", "bootstrap"),
   k = 5,
   replicates = 10,
   crossValRatio = c(train = 0.6, test = 0.2, validate = 0.2),
   params = list(),
   nrounds = 5,
+  shap = TRUE,
+  aggregate_shap = TRUE,
+  repVi = 5,
   summarizePred = TRUE,
   scaleDataset = FALSE,
   XGBmodel = FALSE,
   DALEXexplainer = FALSE,
   variableResponse = FALSE,
   save_validateset = FALSE,
+  baseFilenameXDG = NULL,
   filenameRasterPred = NULL,
   tempdirRaster = NULL,
   nCoresRaster = parallel::detectCores()\%/\%2,
@@ -44,8 +47,6 @@ pipe_xgboost(
 
 \item{weight}{Optional array of the same length as \code{nrow(df)}, containing weights to apply to the model's loss for each sample.}
 
-\item{repVi}{replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.}
-
 \item{crossValStrategy}{\code{Kfold} or \code{bootstrap}.}
 
 \item{k}{number of data partitions when \code{crossValStrategy="Kfold"}.}
@@ -58,6 +59,12 @@ pipe_xgboost(
 
 \item{nrounds}{max number of boosting iterations.}
 
+\item{shap}{if \code{TRUE}, return the SHAP values as per \code{\link[kernelshap:kernelshap]{kernelshap::kernelshap()}}.}
+
+\item{aggregate_shap}{if \code{TRUE}, and \code{shap} is also \code{TRUE}, aggregate SHAP from all replicates.}
+
+\item{repVi}{replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.}
+
 \item{summarizePred}{if \code{TRUE}, return the mean, sd and se of the predictors. if \code{FALSE}, return the predictions for each replicate.}
 
 \item{scaleDataset}{if \code{TRUE}, scale the whole dataset only once instead of the train set at each replicate. Optimize processing time for predictions with large rasters.}
@@ -67,6 +74,8 @@ pipe_xgboost(
 \item{DALEXexplainer}{if TRUE, return a explainer for the models from \code{\link[DALEX:explain]{DALEX::explain()}} function. It doesn't work with multisession future plans.}
 
 \item{save_validateset}{save the validateset (independent data not used for training).}
+
+\item{baseFilenameXDG}{if no missing, save the NN in hdf5 format on this path with iteration appended.}
 
 \item{filenameRasterPred}{if no missing, save the predictions in a RasterBrick to this file.}
 

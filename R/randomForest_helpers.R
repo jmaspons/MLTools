@@ -110,7 +110,7 @@ variableResponse_explainer<- function(explainer, variables=NULL, maxPoly=5){
 }
 
 
-gatherResults.pipe_result.randomForest<- function(res, summarizePred, filenameRasterPred, nCoresRaster, repNames){
+gatherResults.pipe_result.randomForest<- function(res, aggregate_shap, summarizePred, filenameRasterPred, nCoresRaster, repNames){
   if (missing(repNames)){
     names(res)<- paste0("rep", formatC(1:length(res), format="d", flag="0", width=nchar(length(res))))
   } else {
@@ -126,6 +126,15 @@ gatherResults.pipe_result.randomForest<- function(res, summarizePred, filenameRa
     sc<- sc[[1]]
   }
   out$scale<- sc
+
+  if (!is.null(res[[1]]$shap)){
+    out$shap<- lapply(res, function(x){
+      x$shap
+    })
+    if (aggregate_shap){
+      out$shap<- aggregate_kernelshap(out$shap)
+    }
+  }
 
   if (!is.null(res[[1]]$variableImportance)){
     vi<- lapply(res, function(x){
