@@ -115,7 +115,9 @@ gatherResults.pipe_result.xgboost<- function(res, aggregate_shap, summarizePred,
       x$shap
     })
     if (aggregate_shap){
-      out$shap<- aggregate_kernelshap(out$shap)
+      if (all(sapply(out$shap, class) == "shapviz")) {
+        out$shap<- do.call(rbind, out$shap)
+      }
     }
   }
 

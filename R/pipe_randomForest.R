@@ -13,7 +13,7 @@
 #' @param ntree Number of trees to grow.
 #' @param importance parameter for \code\link[randomForest]{randomForest}} indicating if importance of predictors should be assessed.
 #' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
-#' @param shap if `TRUE`, return the SHAP values as per [kernelshap::kernelshap()].
+#' @param shap if `TRUE`, return the SHAP values as [shapviz::shapviz()] objects.
 #' @param aggregate_shap if `TRUE`, and `shap` is also `TRUE`, aggregate SHAP from all replicates.
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.
 #' @param summarizePred if `TRUE`, return the mean, sd and se of the predictors. if `FALSE`, return the predictions for each replicate.

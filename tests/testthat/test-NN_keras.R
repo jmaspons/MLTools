@@ -87,9 +87,10 @@ test_that("pipe_keras works", {
     expect_equal(unique(lapply(x$scale, names)), expected=list(c("mean", "sd")))
   })
 
-  tmp<- lapply(result, function(x){
-    expect_s3_class(x$shap, class = "kernelshap")
-  })
+  tmp<- expect_s3_class(result$resp1summarizedPred$shap, class = "shapviz")
+  tmp<- expect_s3_class(result$resp2summarizedPred$shap, class = "mshapviz")
+  tmp<- expect_s3_class(result$resp1$shap, class = "shapviz")
+  tmp<- expect_s3_class(result$resp2$shap, class = "mshapviz")
 
   tmp<- lapply(result, function(x){
     expect_type(x$vi, type="double")

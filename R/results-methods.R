@@ -21,8 +21,8 @@ summary.pipe_result<- function(object, ...){
 
   # SHAP
   if (!is.null(object$shap)){
-    if (!inherits(object$shap, "kernelshap")){ # aggregate_shap
-      out$shap<- summary(aggregate_kernelshap(object$shap))
+    if (!inherits(object$shap, "shapviz")){ # aggregate_shap
+      out$shap<- summary(do.call(rbind, object$shap))
     } else {
       out$shap<- summary(object$shap)
     }

@@ -56,7 +56,7 @@ pipe_randomForest(
 
 \item{ntree}{Number of trees to grow.}
 
-\item{shap}{if \code{TRUE}, return the SHAP values as per \code{\link[kernelshap:kernelshap]{kernelshap::kernelshap()}}.}
+\item{shap}{if \code{TRUE}, return the SHAP values as \code{\link[shapviz:shapviz]{shapviz::shapviz()}} objects.}
 
 \item{aggregate_shap}{if \code{TRUE}, and \code{shap} is also \code{TRUE}, aggregate SHAP from all replicates.}
 

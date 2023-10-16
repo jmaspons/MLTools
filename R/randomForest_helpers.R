@@ -132,7 +132,7 @@ gatherResults.pipe_result.randomForest<- function(res, aggregate_shap, summarize
       x$shap
     })
     if (aggregate_shap){
-      out$shap<- aggregate_kernelshap(out$shap)
+      out$shap<- do.call(rbind, out$shap)
     }
   }
 

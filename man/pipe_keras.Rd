@@ -63,7 +63,7 @@ pipe_keras(
 
 \item{batch_size}{for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".}
 
-\item{shap}{if \code{TRUE}, return the SHAP values as per \code{\link[kernelshap:kernelshap]{kernelshap::kernelshap()}}.}
+\item{shap}{if \code{TRUE}, return the SHAP values as \code{\link[shapviz:shapviz]{shapviz::shapviz()}} object (or \code{\link[shapviz:mshapviz]{shapviz::mshapviz()}} for multioutput models).}
 
 \item{aggregate_shap}{if \code{TRUE}, and \code{shap} is also \code{TRUE}, aggregate SHAP from all replicates.}
 

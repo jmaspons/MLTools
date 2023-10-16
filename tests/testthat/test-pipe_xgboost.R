@@ -80,7 +80,7 @@ test_that("pipe_xgboost works", {
   })
 
   tmp<- lapply(result, function(x){
-    expect_s3_class(x$shap, class = "kernelshap")
+    expect_s3_class(x$shap, class = "shapviz")
   })
 
   tmp<- lapply(result, function(x){

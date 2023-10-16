@@ -138,7 +138,14 @@ gatherResults.pipe_result.keras<- function(res, aggregate_shap=TRUE, summarizePr
       x$shap
     })
     if (aggregate_shap){
-      out$shap<- aggregate_kernelshap(out$shap)
+      if (all(sapply(out$shap, class) == "shapviz")) {
+        out$shap<- do.call(rbind, out$shap)
+      } else { # mshapviz for multioutput models
+        ## TODO: remove workaround after https://github.com/ModelOriented/shapviz/pull/110
+        shapL<- lapply(seq_along(out$shap[[1]]), function(i) do.call(rbind, lapply(out$shap, function(x) x[[i]])))
+        names(shapL)<- names(out$shap[[1]])
+        out$shap<- do.call(c, shapL)
+      }
     }
   }
 

@@ -12,7 +12,7 @@
 #' @param crossValRatio proportion of the dataset used to train, test and validate the model when `crossValStrategy="bootstrap"`. Default to `c(train=0.6, test=0.2, validate=0.2)`. If there is only one value, will be taken as a train proportion and the test set will be used for validation.
 #' @param params the list of parameters to [xgboost::xgb.train()]. The complete list of parameters is available in the [online documentation](https://xgboost.readthedocs.io/en/latest/parameter.html).
 #' @param nrounds max number of boosting iterations.
-#' @param shap if `TRUE`, return the SHAP values as per [kernelshap::kernelshap()].
+#' @param shap if `TRUE`, return the SHAP values as [shapviz::shapviz()] objects.
 #' @param aggregate_shap if `TRUE`, and `shap` is also `TRUE`, aggregate SHAP from all replicates.
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.
 #' @param summarizePred if `TRUE`, return the mean, sd and se of the predictors. if `FALSE`, return the predictions for each replicate.
