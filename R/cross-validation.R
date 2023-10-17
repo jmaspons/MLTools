@@ -147,7 +147,7 @@ kFold_train_test_validate<- function(d, k=5, replicates=5, caseClass=NULL, weigh
 
   out<- lapply(repsL, function(x){
     idx.folds<- unique(unlist(x[-1], use.names=FALSE))
-    validateset<- setdiff(idx.folds, x[[1]])
+    validateset<- x[[1]]
     lapply(x[-1], function(y){
       trainset<- setdiff(y, validateset)
       testset<- setdiff(idx.folds, c(trainset, validateset))
@@ -157,6 +157,15 @@ kFold_train_test_validate<- function(d, k=5, replicates=5, caseClass=NULL, weigh
 
   out<- do.call(c, out)
   names(out)<- gsub("^Rep[0-9]+\\.", "", names(out))
+
+  if (k == 2) {
+    message("For k < 3, there are not enough folds for independent validatesets.")
+    out<- lapply(out, function(x) {
+      x$testset <- x$validateset
+      x$validateset <- integer()
+      x
+    })
+  }
 
   if (!is.null(caseClass)){
     if (all(weight == "class")){

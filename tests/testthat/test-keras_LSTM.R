@@ -30,7 +30,7 @@ repVi<- 2
 perm_dim<- list(2:3, 2)
 comb_dims<- FALSE
 crossValStrategy<- c("Kfold", "bootstrap")
-k<- 3
+k<- 2
 replicates<- 2
 crossValRatio<- c(train=0.6, test=0.2, validate=0.2)
 hidden_shape.RNN<- 2
