@@ -145,27 +145,36 @@ kFold_train_test_validate<- function(d, k=5, replicates=5, caseClass=NULL, weigh
 
   repsL<- split(reps, gsub("^Fold[0-9]+\\.", "", names(reps)))
 
-  out<- lapply(repsL, function(x){
-    idx.folds<- unique(unlist(x[-1], use.names=FALSE))
-    validateset<- x[[1]]
-    lapply(x[-1], function(y){
-      trainset<- setdiff(y, validateset)
-      testset<- setdiff(idx.folds, c(trainset, validateset))
-      list(trainset=trainset, testset=testset, validateset=validateset)
+  if (k > 2){
+    out<- lapply(repsL, function(x){
+      idx.folds<- unique(unlist(x[-1], use.names=FALSE))
+      validateset<- setdiff(idx.folds, x[[1]])
+      lapply(x[-1], function(y){
+        trainset<- setdiff(y, validateset)
+        testset<- setdiff(idx.folds, c(trainset, validateset))
+        list(trainset=trainset, testset=testset, validateset=validateset)
+      })
     })
-  })
+  } else if (k == 2){
+    message("For k = 2, there are not enough folds for independent validatesets.")
+    out<- lapply(repsL, function(x) {
+      lapply(x[-1], function(y){
+        trainset<- y
+        testset<- x[[1]]
+        list(trainset=trainset, testset=testset, validateset=integer())
+      })
+    })
+  } else if (k == 1){
+    message("For k = 1 doesn't make sense, there are not enough folds for independent test not validate sets. Will be the same as train set.")
+    out<- lapply(repsL, function(x) {
+      lapply(x, function(y){
+        list(trainset=index, testset=index, validateset=integer())
+      })
+    })
+  }
 
   out<- do.call(c, out)
   names(out)<- gsub("^Rep[0-9]+\\.", "", names(out))
-
-  if (k == 2) {
-    message("For k < 3, there are not enough folds for independent validatesets.")
-    out<- lapply(out, function(x) {
-      x$testset <- x$validateset
-      x$validateset <- integer()
-      x
-    })
-  }
 
   if (!is.null(caseClass)){
     if (all(weight == "class")){
