@@ -55,6 +55,9 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
   if (is.numeric(idVars)){
     idVars<- colnames(df)[idVars]
   }
+  if (is.numeric(staticVars)){
+    staticVars<- colnames(df)[staticVars]
+  }
   if (length(caseClass) == 1){
     if (is.numeric(caseClass)){
       idVars<- c(idVars, colnames(df)[caseClass])
