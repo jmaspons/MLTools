@@ -61,6 +61,8 @@ pipe_keras_timeseries(
 
 \item{regex_time}{regular expression matching the \code{timevar} values format.}
 
+\item{staticVars}{predictor variables as column names or indexes on \code{df} indicating fixed vars that don't change over time.}
+
 \item{crossValStrategy}{\code{Kfold} or \code{bootstrap}.}
 
 \item{k}{number of data partitions when \code{crossValStrategy="Kfold"}.}
@@ -74,6 +76,8 @@ pipe_keras_timeseries(
 \item{hidden_shape.static}{number of neurons in the hidden layers of the densely connected neural network model (static data). Can be a vector with values for each hidden layer.}
 
 \item{hidden_shape.main}{number of neurons in the hidden layers of the densely connected neural network model connecting static and time series data. Can be a vector with values for each hidden layer.}
+
+\item{epochs}{parameter for \code{\link[keras:reexports]{keras::fit()}}.}
 
 \item{maskNA}{value to assign to \code{NA}s after scaling and passed to \code{\link[keras:layer_masking]{keras::layer_masking()}}.}
 
@@ -90,7 +94,11 @@ If \code{perm_dim = 2:3}, it calculates the importance for each combination of t
 
 \item{scaleDataset}{if \code{TRUE}, scale the whole dataset only once instead of the train set at each replicate. Optimize processing time for predictions with large rasters.}
 
-\item{NNmodel}{if TRUE, return the serialized model with the result.}
+\item{NNmodel}{if \code{TRUE}, return the serialized model with the result.}
+
+\item{DALEXexplainer}{if \code{TRUE}, return a explainer for the models from \code{\link[DALEX:explain]{DALEX::explain()}} function. It doesn't work with multisession future plans.}
+
+\item{variableResponse}{if \code{TRUE}, return aggregated_profiles_explainer object from \code{\link[ingredients:partial_dependence]{ingredients::partial_dependency()}} and the coefficients of the adjusted linear model.}
 
 \item{save_validateset}{save the validateset (independent data not used for training).}
 
@@ -103,6 +111,8 @@ If \code{perm_dim = 2:3}, it calculates the importance for each combination of t
 \item{nCoresRaster}{number of cores used for parallelized raster cores. Use half of the available cores by default.}
 
 \item{verbose}{If > 0, print state and passed to keras functions}
+
+\item{...}{extra parameters for \code{\link[future.apply:future_lapply]{future.apply::future_replicate()}}  and \code{\link[ingredients:feature_importance]{ingredients::feature_importance()}}.}
 }
 \description{
 Neural network model with keras

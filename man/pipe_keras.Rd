@@ -59,6 +59,8 @@ pipe_keras(
 
 \item{hidden_shape}{number of neurons in the hidden layers of the neural network model. Can be a vector with values for each hidden layer.}
 
+\item{epochs}{parameter for \code{\link[keras:reexports]{keras::fit()}}.}
+
 \item{maskNA}{value to assign to \code{NA}s after scaling and passed to \code{\link[keras:layer_masking]{keras::layer_masking()}}.}
 
 \item{batch_size}{for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".}
@@ -75,6 +77,10 @@ pipe_keras(
 
 \item{NNmodel}{if TRUE, return the serialized model with the result. Use \code{\link[keras:serialize_model]{keras::unserialize_model()}} to get the model.}
 
+\item{DALEXexplainer}{if \code{TRUE}, return a explainer for the models from \code{\link[DALEX:explain]{DALEX::explain()}} function. It doesn't work with multisession future plans.}
+
+\item{variableResponse}{if \code{TRUE}, return \code{aggregated_profiles_explainer} objects from \code{\link[ingredients:partial_dependence]{ingredients::partial_dependency()}} and the coefficients of the adjusted linear model.}
+
 \item{save_validateset}{save the validateset (independent data not used for training).}
 
 \item{baseFilenameNN}{if no missing, save the NN in hdf5 format on this path with iteration appended.}
@@ -86,6 +92,8 @@ pipe_keras(
 \item{nCoresRaster}{number of cores used for parallelized raster cores. Use half of the available cores by default.}
 
 \item{verbose}{If > 0, print state and passed to keras functions}
+
+\item{...}{extra parameters for \code{\link[future.apply:future_lapply]{future.apply::future_replicate()}} and \code{\link[ingredients:feature_importance]{ingredients::feature_importance()}}.}
 }
 \description{
 Neural network model with keras

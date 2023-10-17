@@ -39,6 +39,21 @@ variableImportance(
 )
 }
 \arguments{
+\item{model}{the model to use for predictions.}
+
+\item{data}{input data to permute and to use for predictions.}
+
+\item{y}{response data corresponding to \code{data} features.}
+
+\item{repVi}{replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.}
+
+\item{variable_groups}{list of variables to join when calculating variable importance by permuting them at the same time.}
+
+\item{perm_dim}{dimension to perform the permutations to calculate the importance of the variables (data dimensions [case, time, variable]).
+If \code{perm_dim = 2:3}, it calculates the importance for each combination of the 2nd and 3rd dimensions.}
+
+\item{comb_dims}{variable importance calculations, if \code{TRUE}, do the permutations for each combination of the levels of the variables from 2nd and 3rd dimensions for input data with 3 dimensions. By default \code{FALSE}.}
+
 \item{...}{}
 }
 \description{
@@ -47,4 +62,7 @@ Variable importance by permutations on predictors
 Variable importance by permutations on predictors
 
 Variable importance by permutations on predictors
+}
+\details{
+See \code{\link[ingredients:feature_importance]{ingredients::feature_importance()}}. This function also works for multiinput and 3d data.
 }

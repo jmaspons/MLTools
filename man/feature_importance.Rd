@@ -102,7 +102,7 @@ explain_titanic_glm <- explain(model_titanic_glm,
 fi_glm <- feature_importance(explain_titanic_glm, B = 1)
 plot(fi_glm)
 
-\donttest{
+\dontrun{
 
 fi_glm_joint1 <- feature_importance(explain_titanic_glm,
                    variable_groups = list("demographics" = c("gender", "age"),

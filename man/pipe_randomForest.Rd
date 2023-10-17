@@ -56,6 +56,8 @@ pipe_randomForest(
 
 \item{ntree}{Number of trees to grow.}
 
+\item{importance}{parameter for \code{\link[randomForest:randomForest]{randomForest::randomForest()}} indicating if importance of predictors should be assessed.}
+
 \item{shap}{if \code{TRUE}, return the SHAP values as \code{\link[shapviz:shapviz]{shapviz::shapviz()}} objects.}
 
 \item{aggregate_shap}{if \code{TRUE}, and \code{shap} is also \code{TRUE}, aggregate SHAP from all replicates.}
@@ -68,6 +70,10 @@ pipe_randomForest(
 
 \item{RFmodel}{if TRUE, return the model with the result.}
 
+\item{DALEXexplainer}{if \code{TRUE}, return a explainer for the models from \code{\link[DALEX:explain]{DALEX::explain()}} function. It doesn't work with multisession future plans.}
+
+\item{variableResponse}{if \code{TRUE}, return aggregated_profiles_explainer object from \code{\link[ingredients:partial_dependence]{ingredients::partial_dependency()}} and the coefficients of the adjusted linear model.}
+
 \item{save_validateset}{save the validateset (independent data not used for training).}
 
 \item{filenameRasterPred}{if no missing, save the predictions in a RasterBrick to this file.}
@@ -78,7 +84,7 @@ pipe_randomForest(
 
 \item{verbose}{If > 0, print state and passed to randomForest functions}
 
-\item{batch_size}{for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".}
+\item{...}{extra parameters for \code{\link[randomForest:randomForest]{randomForest::randomForest()}}, \code{\link[future.apply:future_lapply]{future.apply::future_replicate()}} and \code{\link[ingredients:feature_importance]{ingredients::feature_importance()}}.}
 }
 \description{
 Random forest model with randomForest

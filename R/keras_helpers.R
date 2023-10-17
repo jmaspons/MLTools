@@ -35,15 +35,14 @@ performance_keras<- function(modelNN, test_data, test_labels, batch_size=NULL, s
 
 #' Variable importance by permutations on predictors
 #'
-#' @param model
-#' @param data
-#' @param y
-#' @param repVi
-#' @param variable_groups
-#' @param perm_dim
-#' @param comb_dims
-#' @param batch_size
-#' @param ...
+#' @inheritParams pipe_keras_timeseries
+#' @param model the model to use for predictions.
+#' @param data input data to permute and to use for predictions.
+#' @param y response data corresponding to `data` features.
+#' @param variable_groups list of variables to join when calculating variable importance by permuting them at the same time.
+#' @param ... extra parameters for `predict` function.
+#'
+#' @details See [ingredients::feature_importance()]. This function also works for multiinput and 3d data.
 #'
 #' @return
 #' @export
@@ -417,17 +416,15 @@ predict.Raster_keras<- function(object, model, filename="", fun=predict, ...) {
 }
 
 
-#' Title
+#' Predict with keras
 #'
-#' @param modelNN
-#' @param predInput data.frame or raster with colnames or layer names matching the expected input for modelNN
-#' @param maskNA
-#' @param scaleInput
-#' @param col_means_train
-#' @param col_stddevs_train
-#' @param batch_size
-#' @param filename
-#' @param tempdirRaster
+#' @inheritParams pipe_keras
+#' @param modelNN an [keras::keras()] model.
+#' @param predInput `data.frame` or `raster` with colnames or layer names matching the expected input for modelRF.
+#' @param scaleInput if `TRUE`, scale `predInput` with `col_means_train` and col `col_stddevs_train`.
+#' @param col_means_train the original mean of the `predInput` columns.
+#' @param col_stddevs_train the original sd of the `predInput` columns.
+#' @param filename the file to write the raster predictions.
 #'
 #' @return
 #'

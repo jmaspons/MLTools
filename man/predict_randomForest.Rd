@@ -2,7 +2,7 @@
 % Please edit documentation in R/randomForest_helpers.R
 \name{predict_randomForest}
 \alias{predict_randomForest}
-\title{Title}
+\title{Predict with randomForest}
 \usage{
 predict_randomForest(
   modelRF,
@@ -16,10 +16,22 @@ predict_randomForest(
 )
 }
 \arguments{
-\item{predInput}{data.frame or raster with colnames or layer names matching the expected input for modelRF}
+\item{modelRF}{a \code{\link[randomForest:randomForest]{randomForest::randomForest()}} model.}
 
-\item{tempdirRaster}{}
+\item{predInput}{\code{data.frame} or \code{raster} with colnames or layer names matching the expected input for modelRF.}
+
+\item{scaleInput}{if \code{TRUE}, scale \code{predInput} with \code{col_means_train} and col \code{col_stddevs_train}.}
+
+\item{col_means_train}{the original mean of the \code{predInput} columns.}
+
+\item{col_stddevs_train}{the original sd of the \code{predInput} columns.}
+
+\item{filename}{the file to write the raster predictions.}
+
+\item{tempdirRaster}{path to a directory to save temporal raster files.}
+
+\item{nCoresRaster}{number of cores used for parallelized raster cores. Use half of the available cores by default.}
 }
 \description{
-Title
+Predict with randomForest
 }

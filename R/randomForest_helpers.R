@@ -311,15 +311,15 @@ predict.Raster_randomForest<- function(object, model, filename="", fun=predict, 
 }
 
 
-#' Title
+#' Predict with randomForest
 #'
-#' @param modelRF
-#' @param predInput data.frame or raster with colnames or layer names matching the expected input for modelRF
-#' @param scaleInput
-#' @param col_means_train
-#' @param col_stddevs_train
-#' @param filename
-#' @param tempdirRaster
+#' @inheritParams pipe_randomForest
+#' @param modelRF a [randomForest::randomForest()] model.
+#' @param predInput `data.frame` or `raster` with colnames or layer names matching the expected input for modelRF.
+#' @param scaleInput if `TRUE`, scale `predInput` with `col_means_train` and col `col_stddevs_train`.
+#' @param col_means_train the original mean of the `predInput` columns.
+#' @param col_stddevs_train the original sd of the `predInput` columns.
+#' @param filename the file to write the raster predictions.
 #'
 #' @return
 #'

@@ -11,6 +11,10 @@ plotVI.pipe_result(
 )
 }
 \arguments{
+\item{res}{a \code{pipe_result} object.}
+
+\item{vi}{output type . For ratio and diff, performance is compared with the full model without any permutation.}
+
 \item{dispersion}{sd, se or ci. Metric of the dispersion bars}
 }
 \description{

@@ -69,9 +69,11 @@ pipe_xgboost(
 
 \item{scaleDataset}{if \code{TRUE}, scale the whole dataset only once instead of the train set at each replicate. Optimize processing time for predictions with large rasters.}
 
-\item{XGBmodel}{if TRUE, return the model with the result.}
+\item{XGBmodel}{if \code{TRUE}, return the model with the result.}
 
-\item{DALEXexplainer}{if TRUE, return a explainer for the models from \code{\link[DALEX:explain]{DALEX::explain()}} function. It doesn't work with multisession future plans.}
+\item{DALEXexplainer}{if \code{TRUE}, return a explainer for the models from \code{\link[DALEX:explain]{DALEX::explain()}} function. It doesn't work with multisession future plans.}
+
+\item{variableResponse}{if \code{TRUE}, return aggregated_profiles_explainer object from \code{\link[ingredients:partial_dependence]{ingredients::partial_dependency()}} and the coefficients of the adjusted linear model.}
 
 \item{save_validateset}{save the validateset (independent data not used for training).}
 
@@ -84,6 +86,8 @@ pipe_xgboost(
 \item{nCoresRaster}{number of cores used for parallelized raster cores. Use half of the available cores by default.}
 
 \item{verbose}{if > 0, print the state. The bigger the more information printed.}
+
+\item{...}{extra parameters for \code{\link[xgboost:xgb.train]{xgboost::xgb.train()}}, \code{\link[future.apply:future_lapply]{future.apply::future_replicate()}} or \code{\link[ingredients:feature_importance]{ingredients::feature_importance()}}.}
 }
 \description{
 eXtrem Gradient Boosted models

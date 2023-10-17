@@ -11,22 +11,21 @@
 #' @param k number of data partitions when `crossValStrategy="Kfold"`.
 #' @param crossValRatio Proportion of the dataset used to train, test and validate the model when `crossValStrategy="bootstrap"`. Default to `c(train=0.6, test=0.2, validate=0.2)`. If there is only one value, will be taken as a train proportion and the test set will be used for validation.
 #' @param ntree Number of trees to grow.
-#' @param importance parameter for \code\link[randomForest]{randomForest}} indicating if importance of predictors should be assessed.
-#' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
+#' @param importance parameter for [randomForest::randomForest()] indicating if importance of predictors should be assessed.
 #' @param shap if `TRUE`, return the SHAP values as [shapviz::shapviz()] objects.
 #' @param aggregate_shap if `TRUE`, and `shap` is also `TRUE`, aggregate SHAP from all replicates.
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.
 #' @param summarizePred if `TRUE`, return the mean, sd and se of the predictors. if `FALSE`, return the predictions for each replicate.
 #' @param scaleDataset if `TRUE`, scale the whole dataset only once instead of the train set at each replicate. Optimize processing time for predictions with large rasters.
 #' @param RFmodel if TRUE, return the model with the result.
-#' @param DALEXexplainer if TRUE, return a explainer for the models from \code\link[DALEX]{explain}} function. It doesn't work with multisession future plans.
-#' @param variableResponse if TRUE, return aggregated_profiles_explainer object from \code\link[ingredients]{partial_dependency}} and the coefficients of the adjusted linear model.
+#' @param DALEXexplainer if `TRUE`, return a explainer for the models from [DALEX::explain()] function. It doesn't work with multisession future plans.
+#' @param variableResponse if `TRUE`, return aggregated_profiles_explainer object from [ingredients::partial_dependency()] and the coefficients of the adjusted linear model.
 #' @param save_validateset save the validateset (independent data not used for training).
 #' @param filenameRasterPred if no missing, save the predictions in a RasterBrick to this file.
 #' @param tempdirRaster path to a directory to save temporal raster files.
 #' @param nCoresRaster number of cores used for parallelized raster cores. Use half of the available cores by default.
 #' @param verbose If > 0, print state and passed to randomForest functions
-#' @param ... extra parameters for \code\link[randomForest]{randomForest}}, \code\link[future.apply]{future_replicate}} and \code\link[ingredients]{feature_importance}}.
+#' @param ... extra parameters for [randomForest::randomForest()], [future.apply::future_replicate()] and [ingredients::feature_importance()].
 #'
 #' @return
 #' @export

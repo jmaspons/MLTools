@@ -9,6 +9,7 @@
 #' @param timevar column name of the variable containing the time.
 #' @param responseTime a `timevar` value used as a response var for `responseVars` or the default "LAST" for the last timestep available (`max(df[, timevar])`).
 #' @param regex_time regular expression matching the `timevar` values format.
+#' @param staticVars predictor variables as column names or indexes on `df` indicating fixed vars that don't change over time.
 #' @param crossValStrategy `Kfold` or `bootstrap`.
 #' @param replicates number of replicates for `crossValStrategy="bootstrap"` and `crossValStrategy="Kfold"` (`replicates * k-1`, 1 fold for validation).
 #' @param k number of data partitions when `crossValStrategy="Kfold"`.
@@ -16,7 +17,7 @@
 #' @param hidden_shape.RNN number of neurons in the hidden layers of the Recursive Neural Network model (time series data). Can be a vector with values for each hidden layer.
 #' @param hidden_shape.static number of neurons in the hidden layers of the densely connected neural network model (static data). Can be a vector with values for each hidden layer.
 #' @param hidden_shape.main number of neurons in the hidden layers of the densely connected neural network model connecting static and time series data. Can be a vector with values for each hidden layer.
-#' @param epochs parameter for \code\link[keras]{fit}}.
+#' @param epochs parameter for [keras::fit()].
 #' @param maskNA value to assign to `NA`s after scaling and passed to [keras::layer_masking()].
 #' @param batch_size for fit and predict functions. The bigger the better if it fits your available memory. Integer or "all".
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.
@@ -25,16 +26,16 @@
 #' @param comb_dims variable importance calculations, if `TRUE`, do the permutations for each combination of the levels of the variables from 2nd and 3rd dimensions for input data with 3 dimensions. By default `FALSE`.
 #' @param summarizePred if `TRUE`, return the mean, sd and se of the predictors. if `FALSE`, return the predictions for each replicate.
 #' @param scaleDataset if `TRUE`, scale the whole dataset only once instead of the train set at each replicate. Optimize processing time for predictions with large rasters.
-#' @param NNmodel if TRUE, return the serialized model with the result.
-#' @param DALEXexplainer if `TRUE`, return a explainer for the models from \code\link[DALEX]{explain}} function. It doesn't work with multisession future plans.
-#' @param variableResponse if `TRUE`, return aggregated_profiles_explainer object from \code\link[ingredients]{partial_dependency}} and the coefficients of the adjusted linear model.
+#' @param NNmodel if `TRUE`, return the serialized model with the result.
+#' @param DALEXexplainer if `TRUE`, return a explainer for the models from [DALEX::explain()] function. It doesn't work with multisession future plans.
+#' @param variableResponse if `TRUE`, return aggregated_profiles_explainer object from [ingredients::partial_dependency()] and the coefficients of the adjusted linear model.
 #' @param save_validateset save the validateset (independent data not used for training).
 #' @param baseFilenameNN if no missing, save the NN in hdf5 format on this path with iteration appended.
 #' @param filenameRasterPred if no missing, save the predictions in a RasterBrick to this file.
 #' @param tempdirRaster path to a directory to save temporal raster files.
 #' @param nCoresRaster number of cores used for parallelized raster cores. Use half of the available cores by default.
 #' @param verbose If > 0, print state and passed to keras functions
-#' @param ... extra parameters for \code\link[future.apply]{future_replicate}}  and \code\link[ingredients]{feature_importance}}.
+#' @param ... extra parameters for [future.apply::future_replicate()]  and [ingredients::feature_importance()].
 #'
 #' @return
 #' @export

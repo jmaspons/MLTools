@@ -17,16 +17,16 @@
 #' @param repVi replicates of the permutations to calculate the importance of the variables. 0 to avoid calculating variable importance.
 #' @param summarizePred if `TRUE`, return the mean, sd and se of the predictors. if `FALSE`, return the predictions for each replicate.
 #' @param scaleDataset if `TRUE`, scale the whole dataset only once instead of the train set at each replicate. Optimize processing time for predictions with large rasters.
-#' @param XGBmodel if TRUE, return the model with the result.
-#' @param DALEXexplainer if TRUE, return a explainer for the models from [DALEX::explain()] function. It doesn't work with multisession future plans.
-#' @param variableResponse if TRUE, return aggregated_profiles_explainer object from \code\link[ingredients]{partial_dependency}} and the coefficients of the adjusted linear model.
+#' @param XGBmodel if `TRUE`, return the model with the result.
+#' @param DALEXexplainer if `TRUE`, return a explainer for the models from [DALEX::explain()] function. It doesn't work with multisession future plans.
+#' @param variableResponse if `TRUE`, return aggregated_profiles_explainer object from [ingredients::partial_dependency()] and the coefficients of the adjusted linear model.
 #' @param save_validateset save the validateset (independent data not used for training).
 #' @param baseFilenameXDG if no missing, save the NN in hdf5 format on this path with iteration appended.
 #' @param filenameRasterPred if no missing, save the predictions in a RasterBrick to this file.
 #' @param tempdirRaster path to a directory to save temporal raster files.
 #' @param nCoresRaster number of cores used for parallelized raster cores. Use half of the available cores by default.
 #' @param verbose if > 0, print the state. The bigger the more information printed.
-#' @param ... extra parameters for [xgboost::xgb.train()], \code\link[future.apply]{future_replicate}} or \code\link[ingredients]{feature_importance}}.
+#' @param ... extra parameters for [xgboost::xgb.train()], [future.apply::future_replicate()] or [ingredients::feature_importance()].
 #'
 #' @return
 #' @export

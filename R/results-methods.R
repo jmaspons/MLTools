@@ -192,8 +192,8 @@ print.summary.pipe_result<- function(x, ...){
 
 #' plotVI.pipe_result
 #'
-#' @param res
-#' @param vi
+#' @param res a `pipe_result` object.
+#' @param vi output type [`ratio`, `diff`, `raw`]. For ratio and diff, performance is compared with the full model without any permutation.
 #' @param dispersion sd, se or ci. Metric of the dispersion bars
 #'
 #' @return
