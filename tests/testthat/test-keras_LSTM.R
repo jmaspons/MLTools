@@ -35,8 +35,8 @@ replicates<- 2
 crossValRatio<- c(train=0.6, test=0.2, validate=0.2)
 hidden_shape.RNN<- 2
 hidden_shape.static<- 2
-hidden_shape.main<- 3
-epochs<- 2
+hidden_shape.main<- 2
+epochs<- 1
 maskNA<- -999
 batch_size<- 1000
 summarizePred<- TRUE

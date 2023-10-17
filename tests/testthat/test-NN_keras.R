@@ -15,7 +15,7 @@ crossValStrategy<- c("Kfold", "bootstrap")
 crossValRatio<- c(train=0.6, test=0.2, validate=0.2)
 k<- 2
 idVars<- character()
-epochs<- 2
+epochs<- 1
 maskNA<- -999
 replicates<- 2
 repVi<- 2

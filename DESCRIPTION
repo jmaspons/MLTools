@@ -1,6 +1,6 @@
 Package: NNTools
 Title: Pipes and tools for machine learning
-Version: 0.0.16
+Version: 0.0.17
 Authors@R: c(
     person("Joan", "Maspons", email="j.maspons@creaf.uab.cat", role=c("aut", "cre"),
            comment=c(ORCID="0000-0003-2286-8727")),
