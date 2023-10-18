@@ -231,7 +231,7 @@ pipe_randomForest<- function(df, predInput=NULL, responseVar=1, caseClass=NULL, 
     form<- stats::as.formula(paste(colnames(train_labels), "~ ."))
     modelRF<- randomForest::randomForest(formula=form, data=cbind(train_data, train_labels), xtest=test_data, ytest=test_labels[, 1],
                                          ntree=ntree, weights=sample_weight$weight.train, na.action=stats::na.omit, importance=importance,
-                                         do.trace=ifelse(verbose > 2, TRUE, FALSE), keep.forest=RFmodel, ...)
+                                         do.trace=ifelse(verbose > 2, TRUE, FALSE), keep.forest=TRUE, ...)
     if (verbose > 1) message("Training done")
 
     if (RFmodel){
