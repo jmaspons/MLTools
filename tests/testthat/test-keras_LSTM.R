@@ -18,6 +18,7 @@ predInput<- df
 
 predInput<- predInput
 responseVars<- responseVars
+responseVarCat<- "cat1" ## TODO: test categorical responses and remove form static vars
 caseClass<- NULL
 idVars<- idVars
 weight<- "class"

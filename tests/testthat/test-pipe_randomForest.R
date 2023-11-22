@@ -12,6 +12,7 @@ rownames(df)<- rowNames[1:nrow(df)]
 rownames(predInput)<- rowNames[1:nrow(predInput)]
 
 responseVar<- 1
+responseVarCat<- 5
 crossValStrategy<- c("Kfold", "bootstrap")
 crossValRatio<- c(train=0.6, test=0.2, validate=0.2)
 k<- 3
@@ -46,17 +47,16 @@ test_that("pipe_randomForest works", {
   # future::plan(future.callr::callr(workers=3))
   # future::futureSessionInfo()
   system.time(result$resp1summarizedPred<- pipe_randomForest(df=df, predInput=predInput, responseVar=responseVar,
-                                                      epochs=epochs, repVi=repVi,
-                                                      crossValStrategy=crossValStrategy[1], k=k, replicates=replicates,
+                                                      repVi=10, # check names with 2 digits
+                                                      crossValStrategy=crossValStrategy[1], k=k, replicates=10, # check names with 2 digits
                                                       importance=importance, ntree=ntree,
                                                       DALEXexplainer=DALEXexplainer, variableResponse=variableResponse, save_validateset=save_validateset,
                                                       crossValRatio=crossValRatio, RFmodel=RFmodel, verbose=verbose))
 
 
-  ## TODO: Fix warnings when rev(predInput) (?)
-  system.time(result$resp1<- pipe_randomForest(df=df, predInput=rev(predInput), responseVar=responseVar,
-                                        epochs=epochs, repVi=10,  # check names with 2 digits
-                                        crossValStrategy=crossValStrategy[2], replicates=10,  # check names with 2 digits
+  system.time(result$resp1Cat<- pipe_randomForest(df=dfCat, predInput=rev(predInputCat), responseVar=responseVarCat,
+                                        shap=FALSE, repVi=repVi, # TODO shap with classification trees
+                                        crossValStrategy=crossValStrategy[2], replicates=replicates,  # check names with 2 digits
                                         ntree=ntree, importance=importance, summarizePred=FALSE,
                                         DALEXexplainer=DALEXexplainer, variableResponse=variableResponse, save_validateset=save_validateset,
                                         crossValRatio=crossValRatio[1], RFmodel=RFmodel, verbose=verbose))

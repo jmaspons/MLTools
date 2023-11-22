@@ -11,6 +11,7 @@ rowNames<- do.call(c, rowNames)
 rownames(df)<- rowNames[1:nrow(df)]
 rownames(predInput)<- rowNames[1:nrow(predInput)]
 responseVars<- 1
+responseVarCat<- 5
 crossValStrategy<- c("Kfold", "bootstrap")
 crossValRatio<- c(train=0.6, test=0.2, validate=0.2)
 k<- 2
@@ -56,7 +57,7 @@ test_that("pipe_keras works", {
                                                          baseFilenameNN=paste0(baseFilenameNN, "-resp2summarizedPred"), DALEXexplainer=DALEXexplainer, variableResponse=variableResponse, save_validateset=save_validateset,
                                                          crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
-  system.time(result$resp1<- pipe_keras(df=df, predInput=rev(predInput), responseVars=responseVars,
+  system.time(result$resp1Cat<- pipe_keras(df=df, predInput=rev(predInput), responseVars=responseVarCat,
                                            epochs=epochs, maskNA=maskNA, repVi=10,  # check names with 2 digits
                                            crossValStrategy=crossValStrategy[2], replicates=10,  # check names with 2 digits
                                            hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE,

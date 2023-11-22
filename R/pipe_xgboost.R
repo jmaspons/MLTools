@@ -53,6 +53,15 @@ pipe_xgboost<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVa
     }
   }
 
+  if (!is.numeric(df[, responseVars])){
+    if (length(unique) > 2){
+      stop("`xgboost` doesn't support categorical responses.")
+    } else {
+      warning("Categorical responses transformed to 0 and 1.")
+      df[, responseVars] <- as.numeric(as.factor(df[, responseVars])) - 1
+    }
+  }
+
   predVars<- setdiff(colnames(df), c(responseVars, idVars))
   predVars.cat<- names(which(!sapply(df[, predVars, drop=FALSE], is.numeric)))
   predVars.num<- setdiff(predVars, predVars.cat)

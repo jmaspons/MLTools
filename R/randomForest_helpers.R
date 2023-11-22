@@ -4,9 +4,9 @@ performance_randomForest<- function(modelRF, test_data, test_labels, sample_weig
   perf<- list()
   if (modelRF$type == "classification") {
     if (!is.null(modelRF$confusion)) {
-      perf$error_rate<- modelRF$err.rate$OOB[modelRF$ntree] # * 100
+      perf$error_rate_OOB<- modelRF$err.rate[modelRF$ntree, "OOB"] # * 100
       if (!is.null(modelRF$test$err.rate)) {
-        perf$error_rate<- modelRF$test$err.rate$Test[modelRF$ntree] # * 100
+        perf$error_rate_testset<- modelRF$test$err.rate[modelRF$ntree, "Test"] # * 100
       }
     }
   }

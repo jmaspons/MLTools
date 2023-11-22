@@ -12,6 +12,7 @@ rownames(df)<- rowNames[1:nrow(df)]
 rownames(predInput)<- rowNames[1:nrow(predInput)]
 
 responseVars<- 1
+responseVarCat<- 5
 crossValStrategy<- c("Kfold", "bootstrap")
 crossValRatio<- c(train=0.6, test=0.2, validate=0.2)
 k<- 3
@@ -60,6 +61,13 @@ test_that("pipe_xgboost works", {
                                         nrounds=nrounds, params=params, summarizePred=FALSE,
                                         DALEXexplainer=DALEXexplainer, variableResponse=variableResponse, save_validateset=save_validateset,
                                         crossValRatio=crossValRatio[1], XGBmodel=XGBmodel, verbose=verbose))
+
+  system.time(result$respCat<- pipe_xgboost(df=dfCat, predInput=rev(predInputCat), responseVars=responseVarsCat,
+                                          epochs=epochs, repVi=10,  # check names with 2 digits
+                                          crossValStrategy=crossValStrategy[2], replicates=replicates,
+                                          nrounds=nrounds, params=params, summarizePred=FALSE,
+                                          DALEXexplainer=DALEXexplainer, variableResponse=variableResponse, save_validateset=save_validateset,
+                                          crossValRatio=crossValRatio[1], XGBmodel=XGBmodel, verbose=verbose))
 
 
   tmp<- lapply(result, function(x) expect_s3_class(x, class="pipe_result.xgboost"))

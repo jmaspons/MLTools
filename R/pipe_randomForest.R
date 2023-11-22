@@ -223,11 +223,14 @@ pipe_randomForest<- function(df, predInput=NULL, responseVar=1, caseClass=NULL, 
     #   validate_labels<- as.matrix(validate_labels)
     # }
 
-    # modelRF<- randomForest::randomForest(x=train_data, y=train_labels[[1]], xtest=test_data, ytest=test_labels[[1]],
-    #                                      ntree=ntree, weights=sample_weight$weight.train,
-    #                                      na.action=na.omit, importance=importance,
-    #                                      do.trace=ifelse(verbose > 2, TRUE, FALSE), keep.forest=RFmodel, ...)
-    # TODO: use formula to deal with NAs
+    if (is.character(train_labels[, 1])){
+      train_labels[, 1]<- factor(train_labels[, 1])
+      test_labels[, 1]<- factor(test_labels[, 1])
+      validate_labels[, 1]<- factor(validate_labels[, 1])
+    }
+
+
+
     form<- stats::as.formula(paste(colnames(train_labels), "~ ."))
     modelRF<- randomForest::randomForest(formula=form, data=cbind(train_data, train_labels), xtest=test_data, ytest=test_labels[, 1],
                                          ntree=ntree, weights=sample_weight$weight.train, na.action=stats::na.omit, importance=importance,
