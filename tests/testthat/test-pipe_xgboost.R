@@ -17,7 +17,6 @@ crossValStrategy<- c("Kfold", "bootstrap")
 crossValRatio<- c(train=0.6, test=0.2, validate=0.2)
 k<- 3
 idVars<- character()
-epochs<- 2
 replicates<- 2
 repVi<- 2
 summarizePred<- TRUE
@@ -47,7 +46,7 @@ test_that("pipe_xgboost works", {
   # future::plan(future.callr::callr(workers=3))
   # future::futureSessionInfo()
   system.time(result$resp1summarizedPred<- pipe_xgboost(df=df, predInput=predInput, responseVars=responseVars,
-                                                      epochs=epochs, repVi=repVi,
+                                                      repVi=repVi,
                                                       crossValStrategy=crossValStrategy[1], k=k, replicates=replicates,
                                                       params=params, nrounds=nrounds,
                                                       DALEXexplainer=DALEXexplainer, variableResponse=variableResponse, save_validateset=save_validateset,
@@ -56,14 +55,14 @@ test_that("pipe_xgboost works", {
 
   ## TODO: Fix warnings when rev(predInput) (?)
   system.time(result$resp1<- pipe_xgboost(df=df, predInput=rev(predInput), responseVars=responseVars,
-                                        epochs=epochs, repVi=10,  # check names with 2 digits
+                                        repVi=10,  # check names with 2 digits
                                         crossValStrategy=crossValStrategy[2], replicates=10,  # check names with 2 digits
                                         nrounds=nrounds, params=params, summarizePred=FALSE,
                                         DALEXexplainer=DALEXexplainer, variableResponse=variableResponse, save_validateset=save_validateset,
                                         crossValRatio=crossValRatio[1], XGBmodel=XGBmodel, verbose=verbose))
 
   system.time(result$respCat<- pipe_xgboost(df=dfCat, predInput=rev(predInputCat), responseVars=responseVarsCat,
-                                          epochs=epochs, repVi=10,  # check names with 2 digits
+                                          repVi=repVi,
                                           crossValStrategy=crossValStrategy[2], replicates=replicates,
                                           nrounds=nrounds, params=params, summarizePred=FALSE,
                                           DALEXexplainer=DALEXexplainer, variableResponse=variableResponse, save_validateset=save_validateset,
@@ -174,7 +173,7 @@ test_that("Predict with raster", {
   # DEBUG: future::plan(future::sequential, split=TRUE)
   filenameRasterPred<- paste0(tempdir(), "/testMap1.grd") # avoid overwrite
   resultR$summarizedPred<- pipe_xgboost(df, predInput=predInputR,
-                                           epochs=epochs, repVi=repVi,
+                                           repVi=repVi,
                                            crossValStrategy=crossValStrategy[1], k=k, replicates=replicates,
                                            params=params, nrounds=nrounds, summarizePred=TRUE,
                                            filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster,
@@ -182,14 +181,14 @@ test_that("Predict with raster", {
 
   filenameRasterPred<- paste0(tempdir(), "/testMap2.grd") # avoid overwrite
   resultR$pred<- pipe_xgboost(df, predInput=predInputR[[rev(names(predInputR))]],
-                             epochs=epochs, repVi=repVi,
+                             repVi=repVi,
                              crossValStrategy=crossValStrategy[2], replicates=replicates,
                              params=params, nrounds=nrounds, summarizePred=FALSE,
                              filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster,
                              DALEXexplainer=FALSE, crossValRatio=crossValRatio, XGBmodel=XGBmodel, verbose=verbose)
 
   resultR$inMemory<- pipe_xgboost(df, predInput=predInputR,
-                                                  epochs=epochs, repVi=repVi,
+                                                  repVi=repVi,
                                                   crossValStrategy=crossValStrategy[1], k=k, replicates=replicates,
                                                   params=params, nrounds=nrounds, summarizePred=TRUE,
                                                   tempdirRaster=tempdirRaster,
@@ -220,22 +219,22 @@ test_that("Future plans work", {
   # https://cran.r-project.org/web/packages/future/vignettes/future-4-non-exportable-objects.html
 
   future::plan(future::sequential, split=TRUE)
-  system.time(res<- pipe_xgboost(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi, params=params,
+  system.time(res<- pipe_xgboost(df=df, predInput=predInput, responseVars=responseVars, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi, params=params,
                                nrounds=nrounds, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, XGBmodel=XGBmodel, verbose=verbose))
   expect_s3_class(res, class="pipe_result.xgboost")
 
   future::plan(future::multicore)
-  system.time(res<- pipe_xgboost(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi, params=params,
+  system.time(res<- pipe_xgboost(df=df, predInput=predInput, responseVars=responseVars, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi, params=params,
                                nrounds=nrounds, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, XGBmodel=XGBmodel, verbose=verbose))
   expect_s3_class(res, class="pipe_result.xgboost")
 
   future::plan(future.callr::callr(workers=3))
-  system.time(res<- pipe_xgboost(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi, params=params,
+  system.time(res<- pipe_xgboost(df=df, predInput=predInput, responseVars=responseVars, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi, params=params,
                                nrounds=nrounds, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, XGBmodel=XGBmodel, verbose=verbose))
   expect_s3_class(res, class="pipe_result.xgboost")
 
   future::plan(future::sequential)
-  system.time(res<- pipe_xgboost(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi, params=params,
+  system.time(res<- pipe_xgboost(df=df, predInput=predInput, responseVars=responseVars, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi, params=params,
                                nrounds=nrounds, DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, XGBmodel=XGBmodel, verbose=verbose))
   expect_s3_class(res, class="pipe_result.xgboost")
 })
@@ -243,7 +242,7 @@ test_that("Future plans work", {
 
 test_that("scaleDataset", {
   future::plan(future::multisession)
-  system.time(res<- pipe_xgboost(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi,
+  system.time(res<- pipe_xgboost(df=df, predInput=predInput, responseVars=responseVars, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi,
                                params=params, scaleDataset=TRUE, nrounds=nrounds,
                                DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, XGBmodel=XGBmodel, verbose=verbose))
   expect_s3_class(res, class="pipe_result.xgboost")
@@ -260,7 +259,7 @@ test_that("scaleDataset", {
   df<- df[, names(predInputR)]
 
   filenameRasterPred<- paste0(tempdir(), "/testMapScaleDataset.grd") # avoid overwrite
-  res<- pipe_xgboost(df, predInput=predInputR, epochs=epochs, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi, params=params,
+  res<- pipe_xgboost(df, predInput=predInputR, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi, params=params,
                    scaleDataset=TRUE,  nrounds=nrounds,
                    filenameRasterPred=filenameRasterPred, tempdirRaster=tempdirRaster,
                    DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, XGBmodel=XGBmodel, verbose=verbose)
@@ -270,7 +269,7 @@ test_that("scaleDataset", {
 
 test_that("summary", {
   future::plan(future::multisession)
-  system.time(res<- pipe_xgboost(df=df, predInput=predInput, responseVars=responseVars, epochs=epochs, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi,
+  system.time(res<- pipe_xgboost(df=df, predInput=predInput, responseVars=responseVars, crossValStrategy=crossValStrategy[2], replicates=replicates, repVi=repVi,
                                params=params, scaleDataset=TRUE, nrounds=nrounds,
                                DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, XGBmodel=XGBmodel, verbose=verbose))
 
