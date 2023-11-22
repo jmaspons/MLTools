@@ -1,17 +1,16 @@
 context("NN_keras")
 
-varScale<- seq(-100, 100, length.out=4)
-names(varScale)<- paste0("X", 1:length(varScale))
-df<- data.frame(lapply(varScale, function(i) runif(100) * i), cat1=rep(LETTERS[1:5], times=20), cat2=rep(letters[1:10], each=10))
-predInput<- data.frame(lapply(varScale, function(i) runif(50) * i), cat1=rep(LETTERS[1:5], times=10), cat2=rep(letters[1:10], each=5))
-rowNames<- lapply(seq_len(nrow(df) %/% length(letters) + 1), function(x){
-    sapply(letters, function(y) paste(rep(y, each=x), collapse=""))
-  })
-rowNames<- do.call(c, rowNames)
-rownames(df)<- rowNames[1:nrow(df)]
-rownames(predInput)<- rowNames[1:nrow(predInput)]
-responseVars<- 1
-responseVarCat<- 5
+df <- na.omit(airquality)
+responseVars <- "Ozone"
+predInput <- df
+varScale<- seq(-100, 100, length.out=ncol(df))
+names(varScale)<- names(df)
+
+dfCat <- iris[iris$Species %in% c("setosa", "versicolor"), ] # Only 2 categories supported
+dfCat$Species <- as.character(dfCat$Species)
+responseVarsCat <- "Species"
+predInputCat <- dfCat
+
 crossValStrategy<- c("Kfold", "bootstrap")
 crossValRatio<- c(train=0.6, test=0.2, validate=0.2)
 k<- 2
@@ -34,7 +33,8 @@ variableResponse<- TRUE
 DALEXexplainer<- TRUE
 save_validateset<- TRUE
 NNmodel<- TRUE
-caseClass<- c(rep("A", 23), rep("B", 75), rep("C", 2))
+caseClass<- c(rep("A", 23), rep("B", 75), rep("C", 13)) ## TODO: use it on tests!
+caseClassCat<- dfCat$Species ## TODO: use it on tests!
 weight<- "class"
 verbose<- 2
 verbose<- 0
@@ -57,7 +57,7 @@ test_that("pipe_keras works", {
                                                          baseFilenameNN=paste0(baseFilenameNN, "-resp2summarizedPred"), DALEXexplainer=DALEXexplainer, variableResponse=variableResponse, save_validateset=save_validateset,
                                                          crossValRatio=crossValRatio, NNmodel=NNmodel, verbose=verbose))
 
-  system.time(result$resp1Cat<- pipe_keras(df=df, predInput=rev(predInput), responseVars=responseVarCat,
+  system.time(result$resp1Cat<- pipe_keras(df=dfCat, predInput=rev(predInputCat), responseVars=responseVarsCat,
                                            epochs=epochs, maskNA=maskNA, repVi=10,  # check names with 2 digits
                                            crossValStrategy=crossValStrategy[2], replicates=10,  # check names with 2 digits
                                            hidden_shape=hidden_shape, batch_size=batch_size, summarizePred=FALSE,
@@ -173,7 +173,6 @@ test_that("Predict with raster", {
   NAs<- NAs[NAs$row > NAs$col, ]
   predInputR[NAs$row, NAs$col]<- NA
 
-  names(predInputR)<- names(varScale)
   resultR<- list()
   # predInput<- predInputR
 
@@ -213,7 +212,7 @@ test_that("Predict with raster", {
     expect_s4_class(x$predictions, class="RasterBrick")
   })
   tmp<- expect_equal(names(resultR$resp1summarizedPred$predictions), expected=c("mean", "sd", "se"))
-  tmp<- expect_equal(names(resultR$resp1$predictions), expected=paste0("X1_rep", 1:replicates))
+  tmp<- expect_equal(names(resultR$resp1$predictions), expected=paste0("Ozone_rep", 1:replicates))
 
   # lapply(resultR, function(x) names(x$predictions))
   ## Check NAs position
@@ -267,7 +266,6 @@ test_that("scaleDataset", {
     raster::setValues(predInputR, runif(raster::ncell(predInputR)) * i)
   }))
 
-  names(predInputR)<- names(varScale)
   # predInput<- predInputR
 
   ## TODO: categorical variables for rasters
