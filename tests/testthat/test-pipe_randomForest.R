@@ -18,6 +18,7 @@ idVars<- character()
 replicates<- 2
 repVi<- 2
 summarizePred<- TRUE
+shap<- TRUE
 ntree<- 10
 importance<- TRUE
 scaleDataset<- FALSE
@@ -143,7 +144,7 @@ test_that("pipe_randomForest works", {
 
 
 test_that("Predict with raster", {
-  predInputR<- raster::raster(nrows=4, ncols=6)
+  predInputR<- raster::raster(nrows=3, ncols=5)
   predInputR<- raster::stack(lapply(varScale, function(i){
     raster::setValues(predInputR, runif(raster::ncell(predInputR)) * i)
   }))
@@ -237,7 +238,7 @@ test_that("scaleDataset", {
                                DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, RFmodel=RFmodel, verbose=verbose))
   expect_s3_class(res, class="pipe_result.randomForest")
 
-  predInputR<- raster::raster(nrows=15, ncols=15)
+  predInputR<- raster::raster(nrows=5, ncols=5)
   predInputR<- raster::stack(lapply(varScale, function(i){
     raster::setValues(predInputR, runif(raster::ncell(predInputR)) * i)
   }))

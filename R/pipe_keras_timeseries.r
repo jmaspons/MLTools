@@ -189,6 +189,7 @@ pipe_keras_timeseries<- function(df, predInput=NULL, responseVars=1, caseClass=N
   )
 
   res<- future.apply::future_lapply(idxSetsL, function(idx.repli){
+  # DEBUG: idx.repli<- idxSetsL[[1]]
     resi<- list()
     crossValSets<- lapply(idx.repli[intersect(c("trainset", "testset"), names(idx.repli))], function(x) df.wide[x, ])
 

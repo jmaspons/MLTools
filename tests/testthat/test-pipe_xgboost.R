@@ -19,6 +19,7 @@ idVars<- character()
 replicates<- 2
 repVi<- 2
 summarizePred<- TRUE
+shap<- TRUE
 params<- list()
 nrounds<- 2
 scaleDataset<- FALSE
@@ -152,7 +153,7 @@ test_that("pipe_xgboost works", {
 
 
 test_that("Predict with raster", {
-  predInputR<- raster::raster(nrows=4, ncols=6)
+  predInputR<- raster::raster(nrows=3, ncols=5)
   predInputR<- raster::stack(lapply(varScale, function(i){
     raster::setValues(predInputR, runif(raster::ncell(predInputR)) * i)
   }))
@@ -162,7 +163,6 @@ test_that("Predict with raster", {
   NAs<- NAs[NAs$row > NAs$col, ]
   predInputR[NAs$row, NAs$col]<- NA
 
-  names(predInputR)<- names(varScale)
   resultR<- list()
   # predInput<- predInputR
 
@@ -247,12 +247,11 @@ test_that("scaleDataset", {
                                DALEXexplainer=DALEXexplainer, crossValRatio=crossValRatio, XGBmodel=XGBmodel, verbose=verbose))
   expect_s3_class(res, class="pipe_result.xgboost")
 
-  predInputR<- raster::raster(nrows=15, ncols=15)
+  predInputR<- raster::raster(nrows=5, ncols=5)
   predInputR<- raster::stack(lapply(varScale, function(i){
     raster::setValues(predInputR, runif(raster::ncell(predInputR)) * i)
   }))
 
-  names(predInputR)<- names(varScale)
   # predInput<- predInputR
 
   ## TODO: categorical variables for rasters

@@ -41,6 +41,9 @@ pipe_xgboost<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVa
   crossValStrategy<- match.arg(crossValStrategy)
   if (is.numeric(responseVars)){
     responseVars<- colnames(df)[responseVars]
+    if (length(responseVars) > 1){
+      stop("`xdgboost` doesn't support multiresponse models yet.")
+    }
   }
   if (is.numeric(idVars)){
     idVars<- colnames(df)[idVars]
@@ -161,10 +164,7 @@ pipe_xgboost<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVa
   )
 
   res<- future.apply::future_lapply(idxSetsL, function(idx.repli){
-  # res<- list()
-  # for (i in seq_along(idxSetsL)){
-  #   idx.repli<- idxSetsL[[i]]
-    # TODO: TEST idx.repli<- idxSetsL[[1]]
+  # DEBUG: idx.repli<- idxSetsL[[1]]
     resi<- list()
     # crossValSets<- splitdf(df, ratio=crossValRatio, sample_weight=sample_weight)
     crossValSets<- lapply(idx.repli[intersect(c("trainset", "testset"), names(idx.repli))], function(x) df[x, ])
@@ -326,8 +326,6 @@ pipe_xgboost<- function(df, predInput=NULL, responseVars=1, caseClass=NULL, idVa
 
     return(resi)
   }, future.seed=TRUE, ...)
-  #   res[[i]]<- resi
-  # }
 
   if (scaleDataset){
     res[[1]]$scaleVals<- list(dataset=data.frame(mean=col_means_train, sd=col_stddevs_train))

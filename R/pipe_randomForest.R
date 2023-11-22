@@ -43,6 +43,9 @@ pipe_randomForest<- function(df, predInput=NULL, responseVar=1, caseClass=NULL, 
   }
   if (is.numeric(responseVar)){
     responseVar<- colnames(df)[responseVar]
+    if (length(responseVar) > 1){
+      stop("`randomForest` doesn't support multiresponse models.")
+    }
   }
   if (is.numeric(idVars)){
     idVars<- colnames(df)[idVars]
@@ -155,10 +158,6 @@ pipe_randomForest<- function(df, predInput=NULL, responseVar=1, caseClass=NULL, 
 
   res<- future.apply::future_lapply(idxSetsL, function(idx.repli){
   # DEBUG: idx.repli<- idxSetsL[[1]]
-  # res<- list()
-  # for (i in seq_along(idxSetsL)){
-  #   idx.repli<- idxSetsL[[i]]
-    # TODO: TEST idx.repli<- idxSetsL[[1]]
     resi<- list()
     # crossValSets<- splitdf(df, ratio=crossValRatio, sample_weight=sample_weight)
     crossValSets<- lapply(idx.repli[intersect(c("trainset", "testset"), names(idx.repli))], function(x) df[x, ])
@@ -254,6 +253,7 @@ pipe_randomForest<- function(df, predInput=NULL, responseVar=1, caseClass=NULL, 
 
     ## SHAP
     if (shap){
+      # TODO: Predictions must be numeric ----
       resi$shap<- get_shap(model=modelRF, test_data=validate_data, bg_data=train_data, bg_weight=sample_weight$weight.train, verbose=max(c(0, verbose - 2)))
     }
 
@@ -305,8 +305,7 @@ pipe_randomForest<- function(df, predInput=NULL, responseVar=1, caseClass=NULL, 
 
     return(resi)
   }, future.seed=TRUE, ...)
-  #   res[[i]]<- resi
-  # }
+
 
   if (scaleDataset){
     res[[1]]$scaleVals<- list(dataset=data.frame(mean=col_means_train, sd=col_stddevs_train))
