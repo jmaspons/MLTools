@@ -16,9 +16,20 @@ knitr::opts_chunk$set(
 # NNTools
 
 <!-- badges: start -->
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-The goal of NNTools is to ...
+The goal of NNTools is to facilitate the use of Machine Learning' technics wrapping all the pipeline in easy to use
+functions (`pipe_*`). The functions take care of the cross-validation, data scaling and return the predictions (also for rasters), SHAP in a single call.
+
+
+## Pre-requisites
+
+Install keras and tensorflow (only needed for `pipe_keras` and `pipe_keras_timeseries`):
+
+``` r
+keras::install_keras()
+```
 
 ## Installation
 
